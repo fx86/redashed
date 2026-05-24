@@ -139,6 +139,15 @@ export async function listSavedQueries(jwt: string): Promise<SavedQuery[]> {
   return handleResponse<SavedQuery[]>(res);
 }
 
+export async function renameSavedQuery(jwt: string, id: string, question: string): Promise<SavedQuery> {
+  const res = await fetch(`${BASE}/saved-queries/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ question }),
+  });
+  return handleResponse<SavedQuery>(res);
+}
+
 export async function deleteSavedQuery(jwt: string, id: string): Promise<void> {
   await fetch(`${BASE}/saved-queries/${id}`, { method: "DELETE", headers: authHeaders(jwt) });
 }
@@ -162,17 +171,36 @@ export interface Dashboard {
   id: string;
   name: string;
   created_at: string;
+  can_edit: boolean;
+  is_owner: boolean;
+}
+
+export interface DashboardEditor {
+  id: string;
+  dashboard_id: string;
+  user_id: string;
+  granted_by: string;
+  created_at: string;
+}
+
+export interface TileLayout {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface DashboardTile {
   id: string;
   dashboard_id: string;
+  saved_query_id: string;
   connection_id: string;
   question: string;
   sql: string;
   chart_type: string;
-  chart_config: Record<string, string>;
+  chart_config: Record<string, unknown>;
   position: number;
+  layout: TileLayout;
   created_at: string;
 }
 
@@ -203,12 +231,11 @@ export async function createDashboardTile(
   jwt: string,
   dashboardId: string,
   body: {
-    connection_id: string;
-    question: string;
-    sql: string;
-    chart_type: string;
-    chart_config: Record<string, string>;
-    position: number;
+    saved_query_id: string;
+    chart_type?: string;
+    chart_config?: Record<string, unknown>;
+    position?: number;
+    layout?: TileLayout;
   }
 ): Promise<DashboardTile> {
   const res = await fetch(`${BASE}/dashboards/${dashboardId}/tiles`, {
@@ -221,6 +248,54 @@ export async function createDashboardTile(
 
 export async function deleteDashboardTile(jwt: string, dashboardId: string, tileId: string): Promise<void> {
   await fetch(`${BASE}/dashboards/${dashboardId}/tiles/${tileId}`, {
+    method: "DELETE",
+    headers: authHeaders(jwt),
+  });
+}
+
+export async function updateDashboardLayout(
+  jwt: string,
+  dashboardId: string,
+  layouts: Array<{ id: string; x: number; y: number; w: number; h: number }>
+): Promise<void> {
+  await fetch(`${BASE}/dashboards/${dashboardId}/layout`, {
+    method: "PUT",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ layouts }),
+  });
+}
+
+export async function updateTileConfig(
+  jwt: string,
+  dashboardId: string,
+  tileId: string,
+  chartType: string,
+  chartConfig: Record<string, unknown>
+): Promise<DashboardTile> {
+  const res = await fetch(`${BASE}/dashboards/${dashboardId}/tiles/${tileId}/config`, {
+    method: "PATCH",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ chart_type: chartType, chart_config: chartConfig }),
+  });
+  return handleResponse<DashboardTile>(res);
+}
+
+export async function listDashboardEditors(jwt: string, dashboardId: string): Promise<DashboardEditor[]> {
+  const res = await fetch(`${BASE}/dashboards/${dashboardId}/editors`, { headers: authHeaders(jwt) });
+  return handleResponse<DashboardEditor[]>(res);
+}
+
+export async function addDashboardEditor(jwt: string, dashboardId: string, userId: string): Promise<DashboardEditor> {
+  const res = await fetch(`${BASE}/dashboards/${dashboardId}/editors`, {
+    method: "POST",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ user_id: userId }),
+  });
+  return handleResponse<DashboardEditor>(res);
+}
+
+export async function removeDashboardEditor(jwt: string, dashboardId: string, userId: string): Promise<void> {
+  await fetch(`${BASE}/dashboards/${dashboardId}/editors/${userId}`, {
     method: "DELETE",
     headers: authHeaders(jwt),
   });

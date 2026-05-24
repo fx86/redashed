@@ -75,10 +75,18 @@
 ### 3.3 Widget
 - [ ] Widget title (editable)
 - [ ] Chart rendered via `@bi-tool/charts` (Observable Plot wrapper)
-- [ ] Chart type auto-selected from result shape; user can override
-- [ ] Resize widget (drag handle)
-- [ ] Remove widget from dashboard
+- [x] Chart type auto-selected from result shape; creator/editors can override — persisted to DB
+- [x] Resize widget (drag handle) — creator/editors only; layout changes persisted
+- [x] Remove widget from dashboard — creator/editors only
 - [ ] Click widget → opens source query in editor
+
+### 3.5 Dashboard Permissions
+- [x] Creator owns the dashboard; only they can change chart type, resize tiles, delete tiles/dashboard
+- [x] Owner can share edit access with other users via `POST /dashboards/{id}/editors` (user ID required)
+- [x] Shared editors have same edit rights as owner, except they cannot delete the dashboard or manage editors
+- [x] `can_edit` / `is_owner` flags returned on every dashboard response — frontend gates UI accordingly
+- [x] Shared dashboards appear in the recipient's dashboard list with a "shared" label
+- [ ] Share by email (requires user lookup endpoint — deferred, currently requires user ID)
 
 ### 3.4 Dashboard Refresh
 - [ ] Manual refresh button

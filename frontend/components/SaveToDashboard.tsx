@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { listDashboards, createDashboard, createDashboardTile, saveQuery, listSavedQueries } from "@/lib/api";
+import { listDashboards, createDashboard, createDashboardTile, saveQuery } from "@/lib/api";
 import type { Dashboard } from "@/lib/api";
 import type { ChartType, ChartConfig } from "@bi-tool/charts";
 
@@ -36,22 +36,16 @@ export default function SaveToDashboard({
 
   async function saveTo(dashboardId: string) {
     setLoading(true);
+    setError(null);
     try {
+      // Always save the query first — tile must reference a saved_query_id
+      const saved = await saveQuery(jwt, { connection_id: connectionId, question, sql });
       await createDashboardTile(jwt, dashboardId, {
-        connection_id: connectionId,
-        question,
-        sql,
+        saved_query_id: saved.id,
         chart_type: chartType,
-        chart_config: (chartConfig as unknown) as Record<string, string>,
+        chart_config: chartConfig as Record<string, unknown>,
         position: 0,
       });
-      const existing = await listSavedQueries(jwt);
-      const alreadySaved = existing.some(
-        (q) => q.question === question && q.connection_id === connectionId
-      );
-      if (!alreadySaved) {
-        await saveQuery(jwt, { connection_id: connectionId, question, sql });
-      }
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
@@ -82,10 +76,10 @@ export default function SaveToDashboard({
           <p className="text-xs text-gray-500">Loading…</p>
         ) : (
           <div className="space-y-2">
-            {dashboards.length > 0 && (
+            {dashboards.filter((d) => d.can_edit).length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs text-gray-400">Existing dashboards</p>
-                {dashboards.map((d) => (
+                {dashboards.filter((d) => d.can_edit).map((d) => (
                   <button
                     key={d.id}
                     onClick={() => saveTo(d.id)}
@@ -120,10 +114,7 @@ export default function SaveToDashboard({
           </div>
         )}
 
-        <button
-          onClick={onCancel}
-          className="text-xs text-gray-500 hover:text-gray-300 underline"
-        >
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-300 underline">
           Cancel
         </button>
       </div>

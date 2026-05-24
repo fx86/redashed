@@ -7,6 +7,7 @@ const links = [
   { href: "/dashboard", label: "Dashboards" },
   { href: "/queries", label: "Queries" },
   { href: "/", label: "Query editor" },
+  { href: "/connections", label: "Connections" },
 ];
 
 export default function Nav() {

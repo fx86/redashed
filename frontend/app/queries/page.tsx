@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { listSavedQueries, listUserConnections, deleteSavedQuery } from "@/lib/api";
-import type { SavedQuery, SavedConnection } from "@/lib/api";
+import {
+  listSavedQueries, listUserConnections, deleteSavedQuery, renameSavedQuery,
+  listDashboards, createDashboardTile,
+} from "@/lib/api";
+import type { SavedQuery, SavedConnection, Dashboard } from "@/lib/api";
 import Nav from "@/components/Nav";
 
 function relativeTime(iso: string): string {
@@ -22,18 +25,27 @@ export default function QueriesPage() {
   const { user, session, loading: authLoading } = useAuth();
   const jwt = session?.access_token ?? "";
 
+  const [mounted, setMounted] = useState(false);
   const [queries, setQueries] = useState<SavedQuery[]>([]);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Add-to-dashboard modal
+  const [addTarget, setAddTarget] = useState<SavedQuery | null>(null);
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [adding, setAdding] = useState<string | null>(null); // dashboard id being added to
+  const [added, setAdded] = useState<string | null>(null);   // dashboard id just confirmed
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!jwt) return;
     Promise.all([listSavedQueries(jwt), listUserConnections(jwt)])
-      .then(([qs, conns]) => {
-        setQueries(qs);
-        setConnections(conns);
-      })
+      .then(([qs, conns]) => { setQueries(qs); setConnections(conns); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [jwt]);
@@ -43,16 +55,50 @@ export default function QueriesPage() {
     return connections.find((c) => c.id === id)?.name ?? "—";
   }
 
+  function startEdit(q: SavedQuery) {
+    setEditingId(q.id);
+    setEditingValue(q.question);
+    setTimeout(() => editInputRef.current?.select(), 0);
+  }
+
+  async function commitEdit(id: string) {
+    const trimmed = editingValue.trim();
+    if (trimmed && trimmed !== queries.find((q) => q.id === id)?.question) {
+      try {
+        const updated = await renameSavedQuery(jwt, id, trimmed);
+        setQueries((prev) => prev.map((q) => (q.id === id ? updated : q)));
+      } catch { /* keep old name on failure */ }
+    }
+    setEditingId(null);
+  }
+
   async function handleDelete(id: string) {
     await deleteSavedQuery(jwt, id);
     setQueries((prev) => prev.filter((q) => q.id !== id));
+  }
+
+  async function openAddModal(q: SavedQuery) {
+    setAddTarget(q);
+    setAdded(null);
+    const list = await listDashboards(jwt).catch(() => []);
+    setDashboards(list.filter((d) => d.can_edit));
+  }
+
+  async function handleAddToDashboard(dashboard: Dashboard) {
+    if (!addTarget) return;
+    setAdding(dashboard.id);
+    try {
+      await createDashboardTile(jwt, dashboard.id, { saved_query_id: addTarget.id });
+      setAdded(dashboard.id);
+    } catch { /* leave adding=null so user can retry */ }
+    finally { setAdding(null); }
   }
 
   const filtered = queries.filter((q) =>
     q.question.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (authLoading || loading) {
+  if (!mounted || authLoading || loading) {
     return (
       <main className="min-h-screen bg-gray-950 flex items-center justify-center">
         <span className="text-gray-500 text-sm">Loading…</span>
@@ -127,23 +173,95 @@ export default function QueriesPage() {
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
                 </td>
-                <td className="px-4 py-2 text-gray-100 font-medium truncate max-w-xs">{q.question}</td>
+                <td className="px-4 py-2 max-w-xs" onClick={(e) => e.stopPropagation()}>
+                  {editingId === q.id ? (
+                    <input
+                      ref={editInputRef}
+                      className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-0.5 text-gray-100 text-xs font-medium outline-none"
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onBlur={() => commitEdit(q.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.currentTarget.blur(); }
+                        if (e.key === "Escape") { setEditingId(null); }
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className="text-gray-100 font-medium truncate block cursor-text hover:text-white"
+                      onDoubleClick={() => startEdit(q)}
+                      title="Double-click to rename"
+                    >
+                      {q.question}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-gray-400 whitespace-nowrap">{connName(q.connection_id)}</td>
                 <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{relativeTime(q.created_at)}</td>
                 <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => handleDelete(q.id)}
-                    className="text-gray-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 px-1"
-                    aria-label="Delete query"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openAddModal(q); }}
+                      className="text-gray-500 hover:text-indigo-400 transition-colors text-[11px] font-medium whitespace-nowrap"
+                    >
+                      + Dashboard
+                    </button>
+                    <button
+                      onClick={() => handleDelete(q.id)}
+                      className="text-gray-700 hover:text-red-400 transition-colors px-1"
+                      aria-label="Delete query"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Add-to-dashboard modal */}
+      {addTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setAddTarget(null)}
+        >
+          <div
+            className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-100">Add to dashboard</h2>
+              <button onClick={() => setAddTarget(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+            </div>
+            <p className="text-xs text-gray-500 truncate">{addTarget.question}</p>
+
+            {dashboards.length === 0 ? (
+              <p className="text-xs text-gray-600">No dashboards yet. Create one from the Dashboards page first.</p>
+            ) : (
+              <div className="space-y-2">
+                {dashboards.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => handleAddToDashboard(d)}
+                    disabled={!!adding || added === d.id}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                      added === d.id
+                        ? "border-indigo-500/50 bg-indigo-600/10 text-indigo-300"
+                        : "border-gray-700 bg-gray-800 hover:border-gray-600 text-gray-200"
+                    }`}
+                  >
+                    <span className="truncate">{d.name}</span>
+                    {adding === d.id && <span className="text-xs text-gray-500 flex-shrink-0 ml-2">Adding…</span>}
+                    {added === d.id && <span className="text-xs text-indigo-400 flex-shrink-0 ml-2">Added ✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
