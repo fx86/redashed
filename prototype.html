@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Querywise — Interactive Prototype</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#060609;display:flex;justify-content:center;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;min-height:100vh}
+.qw{background:#0A0A0F;border-radius:12px;overflow:hidden;font-size:13px;color:#F1F5F9;border:1px solid #2A2A38;width:100%;max-width:1200px}
+.topnav{display:flex;align-items:center;height:46px;background:#111118;border-bottom:1px solid #2A2A38;padding:0 14px;gap:4px}
+.logo-mark{width:26px;height:26px;background:#6366F1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#fff;flex-shrink:0}
+.logo-name{font-size:13px;font-weight:500;color:#F1F5F9;margin:0 16px 0 8px}
+.nl{padding:0 10px;height:46px;display:flex;align-items:center;font-size:12px;color:#94A3B8;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.nl:hover{color:#F1F5F9}.nl.on{color:#F1F5F9;border-bottom-color:#6366F1;font-weight:500}
+.nav-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid #2A2A38;background:#1A1A24;color:#94A3B8;font-family:inherit;display:flex;align-items:center;gap:4px}
+.btnp{background:#6366F1;border-color:#6366F1;color:#fff;font-weight:500}
+.btnp:hover{background:#4F46E5}
+.av{width:26px;height:26px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#fff}
+.scr{display:none;min-height:560px}.scr.on{display:block}
+.subbar{display:flex;align-items:center;padding:10px 16px;background:#111118;border-bottom:1px solid #2A2A38;gap:10px}
+.subbar h1{font-size:15px;font-weight:500;color:#F1F5F9}
+.card{background:#111118;border:1px solid #2A2A38;border-radius:10px;overflow:hidden}
+.card-hd{padding:10px 14px 8px;border-bottom:1px solid #2A2A38;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:10px;font-weight:500;color:#475569;letter-spacing:0.6px;text-transform:uppercase}
+.card-body{padding:12px 14px}
+.mode-wrap{display:flex;background:#1A1A24;border-radius:8px;padding:2px;border:1px solid #2A2A38;gap:1px}
+.mb{padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;color:#94A3B8;border:none;background:transparent;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all 0.12s}
+.mb.on{background:#6366F1;color:#fff}
+.sql-pane{width:100%;background:#0A0A0F;color:#a78bfa;border:none;font-family:monospace;font-size:11.5px;line-height:1.65;padding:14px 16px;resize:none;outline:none;min-height:148px;border-bottom:1px solid #2A2A38}
+.ai-box{padding:12px 14px;background:#0A0A0F;border-bottom:1px solid #2A2A38;display:none}
+.ai-row{display:flex;gap:8px;align-items:center}
+.ai-in{flex:1;background:#1A1A24;border:1px solid #2A2A38;border-radius:8px;padding:8px 12px;color:#F1F5F9;font-family:inherit;font-size:13px;outline:none}
+.ai-in:focus{border-color:#6366F1}
+.run-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#111118;border-top:1px solid #2A2A38;border-bottom:1px solid #2A2A38}
+.run-btn{display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:7px;background:#6366F1;color:#fff;font-size:12px;font-weight:500;border:none;cursor:pointer;font-family:inherit}
+.run-btn:hover{background:#4F46E5}
+.conn-sel{padding:5px 10px;background:#1A1A24;border:1px solid #2A2A38;border-radius:6px;color:#94A3B8;font-size:12px;font-family:inherit;outline:none}
+.res-area{padding:0}
+.rtable{width:100%;border-collapse:collapse;font-size:12px}
+.rtable th{background:#1A1A24;padding:7px 14px;text-align:left;font-size:10px;font-weight:500;color:#475569;border-bottom:1px solid #2A2A38;white-space:nowrap}
+.rtable td{padding:6px 14px;border-bottom:1px solid #1A1A24;color:#94A3B8}
+.rtable td:first-child,.rtable td:nth-child(3){color:#F1F5F9;font-weight:500}
+.rtable tr:hover td{background:#111118}
+.tag{padding:1px 7px;border-radius:4px;font-size:10px;font-weight:500;background:#1A1A24;color:#475569;display:inline-block;margin-right:3px}
+.generating{display:none;padding:14px 16px;background:#0A0A0F;border-bottom:1px solid #2A2A38;font-size:12px;color:#6366F1}
+.sk{height:10px;background:#1A1A24;border-radius:4px;margin-bottom:8px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.kpi{background:#1A1A24;border-radius:8px;padding:12px;text-align:center}
+.kpi-n{font-size:28px;font-weight:500;color:#F1F5F9;line-height:1}
+.kpi-l{font-size:10px;color:#94A3B8;margin-top:4px}
+.kpi-d{font-size:10px;color:#10B981;margin-top:2px}
+.chip-gen{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3)}
+.followup-row{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;background:#111118;border-top:1px solid #2A2A38}
+.fq{padding:4px 10px;border-radius:6px;border:1px solid #2A2A38;font-size:11px;color:#6366F1;cursor:pointer;background:#1A1A24}
+.fq:hover{background:rgba(99,102,241,0.1)}
+.warn-bar{padding:7px 14px;background:rgba(245,158,11,0.08);border-bottom:1px solid rgba(245,158,11,0.2);font-size:11px;color:#F59E0B;display:flex;align-items:center;gap:6px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="qw">
+  <div class="topnav">
+    <div class="logo-mark">Q</div>
+    <span class="logo-name">Querywise</span>
+    <div class="nl on" onclick="showScr('dash',this)">Dashboards</div>
+    <div class="nl" onclick="showScr('queries',this)">Queries</div>
+    <div class="nl" onclick="showScr('editor',this)">Query editor</div>
+    <div class="nl">Alerts</div>
+    <div class="nav-r">
+      <div style="background:#1A1A24;border:1px solid #2A2A38;border-radius:6px;padding:4px 8px;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-search" style="font-size:13px;color:#475569"></i>
+        <span style="font-size:11px;color:#475569">Search…</span>
+      </div>
+      <button class="btn btnp" onclick="newQuery()"><i class="ti ti-plus"></i> New query</button>
+      <div class="av">FX</div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="scr on" id="scr-dash">
+    <div class="subbar">
+      <h1>Space Ops</h1>
+      <i class="ti ti-pencil" style="font-size:13px;color:#475569;cursor:pointer"></i>
+      <span style="font-size:11px;color:#475569;margin-left:4px">Auto-refresh 30s · Updated just now</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn"><i class="ti ti-download"></i> Export</button>
+        <button class="btn"><i class="ti ti-plus"></i> Add widget</button>
+      </div>
+    </div>
+    <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card" style="grid-column:span 2">
+        <div class="card-hd">
+          <span class="card-title">Monthly revenue by product line</span>
+          <span style="font-size:10px;color:#475569">Jan–Jun 2024 · USD</span>
+        </div>
+        <div class="card-body" style="height:180px"><canvas id="chartBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title">Queries over time</span></div>
+        <div class="card-body" style="height:130px"><canvas id="chartLine"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title">GitHub stats</span></div>
+        <div class="card-body">
+          <div class="kpi-grid">
+            <div class="kpi"><div class="kpi-n">194</div><div class="kpi-l">Contributors</div><div class="kpi-d">↑ 12 this week</div></div>
+            <div class="kpi"><div class="kpi-n">2.4K</div><div class="kpi-l">Stars</div><div class="kpi-d">↑ 340 this month</div></div>
+          </div>
+          <div style="font-size:10px;color:#475569;margin-bottom:6px;font-weight:500">BY GROUP</div>
+          <div id="gBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queries list -->
+  <div class="scr" id="scr-queries">
+    <div class="subbar">
+      <h1>All Queries</h1>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <div style="background:#1A1A24;border:1px solid #2A2A38;border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-search" style="font-size:13px;color:#475569"></i>
+          <input style="background:none;border:none;outline:none;color:#F1F5F9;font-size:12px;width:160px;font-family:inherit" placeholder="Search queries…">
+        </div>
+        <select class="conn-sel"><option>All sources</option><option>Snowflake</option><option>BigQuery</option></select>
+        <button class="btn btnp" onclick="newQuery()"><i class="ti ti-plus"></i> New query</button>
+      </div>
+    </div>
+    <table class="rtable" style="table-layout:fixed;width:100%">
+      <colgroup>
+        <col style="width:36px"><col style="width:280px"><col style="width:130px">
+        <col style="width:100px"><col style="width:120px"><col style="width:auto">
+      </colgroup>
+      <thead>
+        <tr>
+          <th></th><th>Name</th><th>Created by</th>
+          <th>Updated</th><th>Source</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="qList"></tbody>
+    </table>
+  </div>
+
+  <!-- Query editor -->
+  <div class="scr" id="scr-editor">
+    <div class="subbar">
+      <input id="qTitle" style="background:none;border:none;outline:none;color:#F1F5F9;font-size:15px;font-weight:500;font-family:inherit;width:280px" value="New query">
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn"><i class="ti ti-share"></i> Share</button>
+        <button class="btn"><i class="ti ti-device-floppy"></i> Save</button>
+      </div>
+    </div>
+    <div style="padding:14px">
+      <div class="card">
+        <div class="card-hd" style="gap:10px;flex-wrap:wrap">
+          <div class="mode-wrap">
+            <button class="mb on" id="btnSQL" onclick="setMode('sql')">
+              <i class="ti ti-code"></i> Write SQL
+            </button>
+            <button class="mb" id="btnAI" onclick="setMode('ai')">
+              <i class="ti ti-sparkles"></i> Ask AI
+            </button>
+          </div>
+          <select class="conn-sel">
+            <option>❄ Snowflake · ANALYTICS</option>
+            <option>◈ BigQuery · bi-sandbox</option>
+            <option>⬡ Postgres · staging</option>
+          </select>
+          <span id="aiChip" class="chip-gen hidden"><i class="ti ti-sparkles"></i> AI generates SQL · you review &amp; run</span>
+        </div>
+        <div class="ai-box" id="aiBox">
+          <div class="ai-row">
+            <input class="ai-in" id="aiInput" placeholder="Ask anything… e.g. Show me monthly revenue by product line for 2024">
+            <button class="btn btnp" onclick="runAI()"><i class="ti ti-sparkles"></i> Generate SQL</button>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#475569;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="fq" onclick="fillAI(this)">Monthly revenue by product</span>
+            <span class="fq" onclick="fillAI(this)">Top 20 customers by LTV</span>
+            <span class="fq" onclick="fillAI(this)">Refund rate by category</span>
+            <span class="fq" onclick="fillAI(this)">Active users last 30 days</span>
+          </div>
+        </div>
+        <div class="generating" id="genPane">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#818cf8">
+            <i class="ti ti-sparkles"></i>
+            <span style="font-weight:500">Generating SQL…</span>
+            <span id="genStep" style="color:#475569">Reading schema context</span>
+          </div>
+          <div class="sk" style="width:85%"></div>
+          <div class="sk" style="width:65%"></div>
+          <div class="sk" style="width:75%"></div>
+          <div class="sk" style="width:50%"></div>
+        </div>
+        <textarea class="sql-pane" id="sqlPane" spellcheck="false">SELECT
+  DATE_TRUNC('month', order_date) AS month,
+  product_line,
+  SUM(revenue)                    AS total_revenue,
+  COUNT(*)                        AS order_count
+FROM analytics.dbt_prod.orders
+WHERE order_date BETWEEN '2024-01-01' AND '2024-12-31'
+  AND status NOT IN ('cancelled', 'pending')
+GROUP BY 1, 2
+ORDER BY 1, 2</textarea>
+        <div class="warn-bar">
+          <i class="ti ti-alert-triangle"></i>
+          Estimated scan ~1.8 GB · Query will be shown before execution
+        </div>
+        <div class="run-bar">
+          <button class="run-btn" onclick="runQuery()">
+            <i class="ti ti-player-play"></i> Run query
+          </button>
+          <span style="font-size:11px;color:#475569" id="runMeta"></span>
+          <div style="margin-left:auto">
+            <button class="btn"><i class="ti ti-chart-bar"></i> Add to dashboard</button>
+          </div>
+        </div>
+        <div id="resArea" class="hidden">
+          <div style="background:#111118;padding:8px 14px;border-bottom:1px solid #2A2A38;display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;font-weight:500;color:#94A3B8">Results</span>
+            <span style="font-size:10px;color:#475569" id="rowCount"></span>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button class="btn" style="font-size:11px;padding:3px 8px"><i class="ti ti-table"></i> Table</button>
+              <button class="btn" style="font-size:11px;padding:3px 8px"><i class="ti ti-chart-bar"></i> Chart</button>
+              <button class="btn" style="font-size:11px;padding:3px 8px"><i class="ti ti-download"></i> CSV</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;max-height:240px;overflow-y:auto">
+            <table class="rtable" id="resTable" style="table-layout:fixed;width:100%"></table>
+          </div>
+          <div class="followup-row" id="fqRow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const C={c1:'#6366F1',c2:'#AB66F1',c3:'#34D5C5',c4:'#F59E0B',c5:'#F25E80'};
+Chart.defaults.color='#94A3B8';
+Chart.defaults.borderColor='#2A2A38';
+Chart.defaults.font.size=11;
+
+let chartsInit=false;
+function initCharts(){
+  if(chartsInit)return;chartsInit=true;
+  new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun'],
+      datasets:[
+        {label:'Enterprise',data:[652,728,612,810,760,890],backgroundColor:C.c1,borderRadius:3,stack:'s'},
+        {label:'Pro',data:[413,457,492,440,510,570],backgroundColor:C.c2,borderRadius:3,stack:'s'},
+        {label:'Starter',data:[242,218,278,260,310,340],backgroundColor:C.c3,borderRadius:3,stack:'s'},
+        {label:'Free',data:[82,95,78,91,104,112],backgroundColor:C.c4,borderRadius:3,stack:'s'},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>' $'+c.raw.toLocaleString()+'K'}}},
+      scales:{x:{grid:{color:'rgba(42,42,56,0.6)'}},y:{grid:{color:'rgba(42,42,56,0.6)'},ticks:{callback:v=>'$'+v+'K'}}}}
+  });
+  new Chart(document.getElementById('chartLine'),{
+    type:'line',
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul'],
+      datasets:[{label:'Queries',data:[12,18,24,35,62,140,310],borderColor:C.c1,
+        backgroundColor:'rgba(99,102,241,0.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:C.c1}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(42,42,56,0.5)'}},y:{grid:{color:'rgba(42,42,56,0.5)'}}}}
+  });
+  const groups=[{n:'Engineering',v:84},{n:'Marketing',v:31},{n:'Product',v:22},{n:'Sales',v:57}];
+  document.getElementById('gBars').innerHTML=groups.map(g=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:11px;color:#94A3B8;width:80px;flex-shrink:0">${g.n}</span>
+      <div style="flex:1;height:5px;background:#1A1A24;border-radius:3px">
+        <div style="width:${Math.round(g.v/84*100)}%;height:100%;background:#6366F1;border-radius:3px;opacity:0.7"></div>
+      </div>
+      <span style="font-size:11px;color:#F1F5F9;width:24px;text-align:right">${g.v}</span>
+    </div>`).join('');
+}
+
+const qData=[
+  {star:true, name:'Monthly revenue by product line',user:'fibinse xavier',updated:'2 min ago',src:'❄ Snowflake'},
+  {star:false,name:'Top 20 customers by LTV',        user:'fibinse xavier',updated:'1 hour ago',src:'❄ Snowflake'},
+  {star:true, name:'Orders vs delivered rate by week',user:'Ana Lima',     updated:'Yesterday', src:'◈ BigQuery'},
+  {star:false,name:'Refund rate by product category', user:'fibinse xavier',updated:'3 days ago',src:'❄ Snowflake'},
+  {star:false,name:'Revenue by region QoQ',           user:'Sam Chen',     updated:'5 days ago',src:'◈ BigQuery'},
+  {star:true, name:'Active users last 30 days',       user:'Ana Lima',     updated:'1 week ago',src:'◈ BigQuery'},
+  {star:false,name:'Churn rate by cohort',            user:'fibinse xavier',updated:'2 weeks ago',src:'❄ Snowflake'},
+];
+
+function renderQueries(){
+  document.getElementById('qList').innerHTML=qData.map(q=>`
+    <tr style="cursor:pointer" onclick="openQuery('${q.name.replace(/'/g,"\\'")}')">
+      <td style="text-align:center">${q.star?'<i class="ti ti-star-filled" style="color:#F59E0B;font-size:14px"></i>':'<i class="ti ti-star" style="font-size:14px;color:#475569"></i>'}</td>
+      <td style="color:#F1F5F9;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.name}</td>
+      <td style="color:#94A3B8;white-space:nowrap">${q.user}</td>
+      <td style="color:#475569;white-space:nowrap">${q.updated}</td>
+      <td style="white-space:nowrap;font-size:11px;color:#94A3B8">${q.src}</td>
+      <td><span style="font-size:11px;color:#6366F1;cursor:pointer">Edit</span>&nbsp;&nbsp;<span style="font-size:11px;color:#94A3B8;cursor:pointer" onclick="event.stopPropagation();openQuery('${q.name.replace(/'/g,"\\'")}')">▷ Run</span></td>
+    </tr>`).join('');
+}
+
+function showScr(id,el){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nl').forEach(l=>l.classList.remove('on'));
+  document.getElementById('scr-'+id).classList.add('on');
+  if(el)el.classList.add('on');
+  if(id==='dash')setTimeout(initCharts,50);
+  if(id==='queries')renderQueries();
+}
+
+function openQuery(name){
+  document.getElementById('qTitle').value=name;
+  showScr('editor',null);
+  document.querySelectorAll('.nl')[2].classList.add('on');
+}
+
+function newQuery(){
+  document.getElementById('qTitle').value='New query';
+  document.getElementById('sqlPane').value='';
+  document.getElementById('resArea').classList.add('hidden');
+  document.getElementById('runMeta').textContent='';
+  setMode('ai');
+  showScr('editor',null);
+  document.querySelectorAll('.nl')[2].classList.add('on');
+  setTimeout(()=>document.getElementById('aiInput').focus(),100);
+}
+
+let currentMode='sql';
+function setMode(m){
+  currentMode=m;
+  document.getElementById('btnSQL').classList.toggle('on',m==='sql');
+  document.getElementById('btnAI').classList.toggle('on',m==='ai');
+  document.getElementById('aiBox').style.display=m==='ai'?'block':'none';
+  document.getElementById('aiChip').classList.toggle('hidden',m==='sql');
+  document.getElementById('sqlPane').style.display='block';
+  document.getElementById('genPane').style.display='none';
+}
+
+function fillAI(el){document.getElementById('aiInput').value=el.textContent;}
+
+const sqlExamples={
+  'Monthly revenue by product':`SELECT
+  DATE_TRUNC('month', order_date) AS month,
+  product_line,
+  SUM(revenue)                    AS total_revenue,
+  COUNT(*)                        AS order_count
+FROM analytics.dbt_prod.orders
+WHERE order_date BETWEEN '2024-01-01' AND '2024-12-31'
+  AND status NOT IN ('cancelled', 'pending')
+GROUP BY 1, 2
+ORDER BY 1, 2`,
+  'Top 20 customers by LTV':`SELECT
+  customer_id,
+  customer_name,
+  SUM(revenue) AS lifetime_value,
+  COUNT(*)     AS total_orders
+FROM analytics.dbt_prod.orders o
+JOIN analytics.dbt_prod.customers c USING (customer_id)
+WHERE o.status = 'delivered'
+GROUP BY 1, 2
+ORDER BY 3 DESC
+LIMIT 20`,
+  'Refund rate by category':`SELECT
+  product_category,
+  COUNT(*) FILTER (WHERE status = 'refunded') AS refunds,
+  COUNT(*)                                     AS total_orders,
+  ROUND(COUNT(*) FILTER (WHERE status = 'refunded') * 100.0 / COUNT(*), 2) AS refund_rate_pct
+FROM analytics.dbt_prod.orders
+GROUP BY 1
+ORDER BY 4 DESC`,
+  'Active users last 30 days':`SELECT
+  DATE_TRUNC('day', session_start) AS day,
+  COUNT(DISTINCT user_id)          AS dau
+FROM analytics.dbt_prod.sessions
+WHERE session_start >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY 1
+ORDER BY 1`
+};
+
+function runAI(){
+  const val=document.getElementById('aiInput').value.trim();
+  if(!val)return;
+  document.getElementById('aiBox').style.display='none';
+  document.getElementById('sqlPane').style.display='none';
+  document.getElementById('genPane').style.display='block';
+  const step=document.getElementById('genStep');
+  const steps=['Reading schema context…','Matching tables: orders, products…','Building GROUP BY logic…','Finalising SQL…'];
+  let si=0;
+  const iv=setInterval(()=>{
+    si++;
+    if(si<steps.length){step.textContent=steps[si];}
+    else{
+      clearInterval(iv);
+      document.getElementById('genPane').style.display='none';
+      let sql=null;
+      for(const[k,v] of Object.entries(sqlExamples)){
+        if(val.toLowerCase().includes(k.toLowerCase().split(' ')[0])){sql=v;break;}
+      }
+      if(!sql)sql=sqlExamples['Monthly revenue by product'];
+      document.getElementById('sqlPane').value=sql;
+      document.getElementById('sqlPane').style.display='block';
+      document.getElementById('aiBox').style.display='block';
+    }
+  },600);
+}
+
+const resultRows=[
+  {month:'Jan 2024',product_line:'Enterprise',total_revenue:'$652,400',order_count:'841'},
+  {month:'Jan 2024',product_line:'Pro',total_revenue:'$412,800',order_count:'1,203'},
+  {month:'Feb 2024',product_line:'Enterprise',total_revenue:'$728,100',order_count:'939'},
+  {month:'Feb 2024',product_line:'Pro',total_revenue:'$456,900',order_count:'1,341'},
+  {month:'Mar 2024',product_line:'Enterprise',total_revenue:'$612,700',order_count:'790'},
+  {month:'Mar 2024',product_line:'Starter',total_revenue:'$278,400',order_count:'5,568'},
+  {month:'Apr 2024',product_line:'Enterprise',total_revenue:'$810,300',order_count:'1,044'},
+  {month:'Apr 2024',product_line:'Pro',total_revenue:'$492,300',order_count:'1,440'},
+];
+
+function runQuery(){
+  const btn=document.querySelector('.run-btn');
+  btn.innerHTML='<i class="ti ti-loader-2"></i> Running…';
+  btn.disabled=true;
+  setTimeout(()=>{
+    btn.innerHTML='<i class="ti ti-player-play"></i> Run query';
+    btn.disabled=false;
+    document.getElementById('runMeta').textContent='1,240 rows · 0.8s';
+    const cols=Object.keys(resultRows[0]);
+    const thead=`<thead><tr>${cols.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')}</tr></thead>`;
+    const tbody=`<tbody>${resultRows.map(r=>`<tr>${cols.map(c=>`<td>${r[c]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    document.getElementById('resTable').innerHTML=thead+tbody;
+    document.getElementById('rowCount').textContent='1,240 rows · showing 8 · 0.8s';
+    document.getElementById('resArea').classList.remove('hidden');
+    const fqs=['Break this down by region','Show Q4 only','Which line grew fastest?','Compare to last year'];
+    document.getElementById('fqRow').innerHTML=fqs.map(q=>`<span class="fq" onclick="followUp('${q}')">${q}</span>`).join('');
+  },1200);
+}
+
+function followUp(q){setMode('ai');document.getElementById('aiInput').value=q;}
+setTimeout(initCharts,200);
+</script>
+</body>
+</html>

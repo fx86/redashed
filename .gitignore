@@ -7,8 +7,13 @@ backend/**/__pycache__/
 backend/.env
 
 # Node
+node_modules/
 frontend/node_modules/
 frontend/.next/
+packages/charts/dist/
+
+# Debug artifacts
+nodejs-memory-bomb.jpg
 
 # Dev script runtime
 .pids/
@@ -16,3 +21,6 @@ frontend/.next/
 
 # OS
 .DS_Store
+
+# Credentials
+supabase_creds.md
