@@ -292,18 +292,31 @@ export default function DashboardPage() {
                             {/* Title row — full width */}
                             <div className="flex items-start justify-between gap-2">
                               <p className="text-sm text-gray-100 font-medium leading-snug select-none">{tile.question}</p>
-                              {canEdit && (
-                                <button
+                              <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                                <a
+                                  href={`/?query_id=${tile.saved_query_id}`}
                                   onMouseDown={(e) => e.stopPropagation()}
-                                  onClick={() => handleDeleteTile(tile)}
-                                  className="w-5 h-5 flex items-center justify-center rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 flex-shrink-0 transition-colors mt-0.5"
-                                  aria-label="Remove tile"
+                                  title="Open in editor"
+                                  className="w-5 h-5 flex items-center justify-center rounded text-gray-700 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
                                 >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                    <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                                   </svg>
-                                </button>
-                              )}
+                                </a>
+                                {canEdit && (
+                                  <button
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={() => handleDeleteTile(tile)}
+                                    className="w-5 h-5 flex items-center justify-center rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                                    aria-label="Remove tile"
+                                  >
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             {/* Controls row — chart switcher + drag hint */}
                             {canEdit && res && (

@@ -15,7 +15,12 @@ export default function ResultsTable({ result }: Props) {
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">{result.row_count} row{result.row_count !== 1 ? "s" : ""}</p>
+        <p className="text-xs text-gray-500">
+          {result.row_count} row{result.row_count !== 1 ? "s" : ""}
+          {result.execution_time_ms > 0 && (
+            <span className="ml-2 text-gray-700">· {result.execution_time_ms}ms</span>
+          )}
+        </p>
       </div>
 
       <div className="overflow-x-auto rounded border border-gray-800">

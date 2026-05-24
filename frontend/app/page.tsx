@@ -9,8 +9,11 @@ import {
   runSavedConnectionQuery,
   runSql,
   saveQuery,
+  getSavedQuery,
+  listAnnotations,
+  upsertAnnotation,
 } from "@/lib/api";
-import type { SavedConnection, TableInfo, QueryResponse } from "@/lib/api";
+import type { SavedConnection, TableInfo, QueryResponse, Annotation } from "@/lib/api";
 import { selectChartType, useRegistry } from "@bi-tool/charts";
 import type { ChartType, ChartConfig } from "@bi-tool/charts";
 import Nav from "@/components/Nav";
@@ -25,6 +28,23 @@ import SaveToDashboard from "@/components/SaveToDashboard";
 type AppStep = "connections" | "query";
 type QueryMode = "ai" | "sql";
 
+const DRAFT_KEY = "bi-tool-sql-draft";
+
+function saveDraft(connectionId: string, sql: string, question: string) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ connectionId, sql, question })); } catch {}
+}
+function loadDraft(connectionId: string): { sql: string; question: string } | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return d.connectionId === connectionId ? d : null;
+  } catch { return null; }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
 export default function Home() {
   const { user, session, loading: authLoading, signInWithGoogle } = useAuth();
 
@@ -32,6 +52,7 @@ export default function Home() {
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [activeConnection, setActiveConnection] = useState<SavedConnection | null>(null);
   const [schema, setSchema] = useState<TableInfo[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [lastQuestion, setLastQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -39,6 +60,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [chartType, setChartType] = useState<ChartType>("table");
   const [chartConfig, setChartConfig] = useState<ChartConfig>({ type: "table" });
   const [showSaveToDashboard, setShowSaveToDashboard] = useState(false);
@@ -65,28 +87,78 @@ export default function Home() {
     return () => document.removeEventListener("keydown", onKey);
   }, [step, result, saved]);
 
+  // Save draft whenever SQL changes
+  useEffect(() => {
+    if (activeConnection && sqlInput) {
+      saveDraft(activeConnection.id, sqlInput, lastQuestion);
+      setIsDirty(true);
+    }
+  }, [sqlInput, activeConnection, lastQuestion]);
+
   useEffect(() => {
     if (!jwt) {
       setInitializing(false);
       return;
     }
+
+    // Read ?query_id from URL before loading connections
+    const queryId = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("query_id")
+      : null;
+
     listUserConnections(jwt)
       .then(async (conns) => {
         setConnections(conns);
-        if (conns.length > 0) {
+        if (conns.length === 0) return;
+
+        if (queryId) {
           try {
-            const tables = await getConnectionSchema(jwt, conns[0].id);
-            setActiveConnection(conns[0]);
+            // Load a specific saved query and connect to its connection
+            const q = await getSavedQuery(jwt, queryId);
+            const conn = conns.find((c) => c.id === q.connection_id) ?? conns[0];
+            const tables = await getConnectionSchema(jwt, conn.id);
+            const anns = await listAnnotations(jwt, conn.id).catch(() => []);
+            setActiveConnection(conn);
             setSchema(tables);
+            setAnnotations(anns);
+            setSqlInput(q.sql);
+            setLastQuestion(q.question);
+            setQueryMode("sql");
             setStep("query");
+            // Remove query_id from URL so refreshing doesn't reload the same query
+            window.history.replaceState({}, "", "/");
           } catch {
-            // auto-connect failed, stay on connections page
+            // Fall back to first connection
+            await connectFirst(conns, jwt);
           }
+        } else {
+          await connectFirst(conns, jwt);
         }
       })
       .catch(() => {})
       .finally(() => setInitializing(false));
-  }, [jwt]);
+  }, [jwt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function connectFirst(conns: SavedConnection[], token: string) {
+    try {
+      const tables = await getConnectionSchema(token, conns[0].id);
+      const anns = await listAnnotations(token, conns[0].id).catch(() => []);
+      // Restore draft if one exists for this connection
+      const draft = loadDraft(conns[0].id);
+      if (draft) {
+        setSqlInput(draft.sql);
+        setLastQuestion(draft.question);
+        setQueryMode("sql");
+        setIsDirty(true);
+      }
+      setActiveConnection(conns[0]);
+      setSchema(tables);
+      setAnnotations(anns);
+      setStep("query");
+    } catch {
+      // stay on connections page
+    }
+  }
 
   async function handleSelectConnection(conn: SavedConnection) {
     setLoading(true);
@@ -94,8 +166,17 @@ export default function Home() {
     setResult(null);
     try {
       const tables = await getConnectionSchema(jwt, conn.id);
+      const anns = await listAnnotations(jwt, conn.id).catch(() => []);
+      const draft = loadDraft(conn.id);
+      if (draft) {
+        setSqlInput(draft.sql);
+        setLastQuestion(draft.question);
+        setQueryMode("sql");
+        setIsDirty(true);
+      }
       setActiveConnection(conn);
       setSchema(tables);
+      setAnnotations(anns);
       setStep("query");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load schema");
@@ -106,11 +187,13 @@ export default function Home() {
 
   async function handleAddConnection(body: {
     name: string;
+    db_type?: string;
     host: string;
     port: number;
     database: string;
     db_user: string;
     password: string;
+    extra_config?: Record<string, unknown>;
   }) {
     setLoading(true);
     setError(null);
@@ -181,11 +264,27 @@ export default function Home() {
         sql: result.sql,
       });
       setSaved(true);
+      setIsDirty(false);
+      clearDraft();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save query");
     }
   }
   handleSaveQueryRef.current = handleSaveQuery;
+
+  async function handleAnnotate(body: { table_schema: string; table_name: string; column_name?: string | null; description: string }) {
+    if (!activeConnection) return;
+    const ann = await upsertAnnotation(jwt, activeConnection.id, body);
+    setAnnotations((prev) => {
+      const filtered = prev.filter(
+        (a) =>
+          !(a.table_schema === body.table_schema &&
+            a.table_name === body.table_name &&
+            (body.column_name ? a.column_name === body.column_name : a.column_name == null))
+      );
+      return [...filtered, ann];
+    });
+  }
 
   function goToConnections() {
     setStep("connections");
@@ -196,6 +295,7 @@ export default function Home() {
     setChartType("table");
     setChartConfig({ type: "table" });
     setShowSaveToDashboard(false);
+    setIsDirty(false);
   }
 
   if (authLoading || initializing) {
@@ -316,7 +416,11 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
-                <SchemaPanel tables={schema} />
+                <SchemaPanel
+                  tables={schema}
+                  annotations={annotations}
+                  onAnnotate={handleAnnotate}
+                />
                 <div className="space-y-4">
 
                   {/* Mode toggle */}
@@ -429,8 +533,11 @@ export default function Home() {
                         <button
                           onClick={handleSaveQuery}
                           disabled={saved}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-700 hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-40 disabled:cursor-default transition-colors"
+                          className="relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-700 hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-40 disabled:cursor-default transition-colors"
                         >
+                          {isDirty && !saved && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" title="Unsaved changes" />
+                          )}
                           {saved ? "Saved ✓" : "Save query"}
                           {!saved && <span className="text-[10px] text-gray-600">⌘S</span>}
                         </button>

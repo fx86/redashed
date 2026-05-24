@@ -89,3 +89,32 @@ ALTER INDEX IF EXISTS dashboard_tiles_source_query_id_idx RENAME TO dashboard_ti
 ALTER TABLE dashboard_tiles DROP COLUMN IF EXISTS question;
 ALTER TABLE dashboard_tiles DROP COLUMN IF EXISTS sql;
 ALTER TABLE dashboard_tiles DROP COLUMN IF EXISTS connection_id;
+
+-- User connections: moved from Supabase to local Postgres
+CREATE TABLE IF NOT EXISTS user_connections (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      TEXT NOT NULL,
+    name         TEXT NOT NULL,
+    db_type      TEXT NOT NULL DEFAULT 'postgres',
+    host         TEXT,
+    port         INTEGER,
+    db_name      TEXT,
+    db_user      TEXT,
+    password_enc TEXT,
+    extra_config JSONB NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS user_connections_user_id_idx ON user_connections (user_id);
+
+-- Schema annotations: table/column descriptions injected into AI prompts
+CREATE TABLE IF NOT EXISTS schema_annotations (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       TEXT NOT NULL,
+    connection_id TEXT NOT NULL,
+    table_schema  TEXT NOT NULL,
+    table_name    TEXT NOT NULL,
+    column_name   TEXT,
+    description   TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS schema_annotations_conn_idx ON schema_annotations (user_id, connection_id);

@@ -167,7 +167,11 @@ export default function QueriesPage() {
               </tr>
             )}
             {filtered.map((q) => (
-              <tr key={q.id} className="group cursor-pointer hover:bg-gray-900 border-b border-gray-800/60">
+              <tr
+                key={q.id}
+                className="group cursor-pointer hover:bg-gray-900 border-b border-gray-800/60"
+                onClick={() => router.push(`/?query_id=${q.id}`)}
+              >
                 <td className="px-4 py-2 text-center">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 mx-auto">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -198,7 +202,7 @@ export default function QueriesPage() {
                 </td>
                 <td className="px-4 py-2 text-gray-400 whitespace-nowrap">{connName(q.connection_id)}</td>
                 <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{relativeTime(q.created_at)}</td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100">
                     <button
                       onClick={(e) => { e.stopPropagation(); openAddModal(q); }}
@@ -207,7 +211,7 @@ export default function QueriesPage() {
                       + Dashboard
                     </button>
                     <button
-                      onClick={() => handleDelete(q.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
                       className="text-gray-700 hover:text-red-400 transition-colors px-1"
                       aria-label="Delete query"
                     >

@@ -9,6 +9,8 @@ class ConnectionParams(BaseModel):
     database: str
     user: str
     password: str
+    db_type: str = "postgres"
+    extra_config: dict = {}
 
 
 class ColumnInfo(BaseModel):
@@ -38,26 +40,46 @@ class QueryResponse(BaseModel):
     columns: list[str]
     rows: list[list[Any]]
     row_count: int
+    execution_time_ms: int = 0
 
 
 # Saved connections
 class SavedConnectionCreate(BaseModel):
     name: str
-    host: str
+    db_type: str = "postgres"
+    host: str = ""
     port: int = 5432
-    database: str
-    db_user: str
-    password: str
+    database: str = ""
+    db_user: str = ""
+    password: str = ""
+    extra_config: dict = {}
 
 
 class SavedConnectionResponse(BaseModel):
     id: str
     name: str
+    db_type: str = "postgres"
     host: str
     port: int
     database: str
     db_user: str
     created_at: str
+
+
+# Annotations
+class UpsertAnnotationRequest(BaseModel):
+    table_schema: str
+    table_name: str
+    column_name: Optional[str] = None
+    description: str
+
+
+class AnnotationResponse(BaseModel):
+    id: str
+    table_schema: str
+    table_name: str
+    column_name: Optional[str]
+    description: str
 
 
 class SavedConnectionQueryRequest(BaseModel):

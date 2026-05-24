@@ -267,3 +267,122 @@ def _coerce_tile(row: dict) -> dict:
         if isinstance(row.get(key), str):
             row[key] = json.loads(row[key])
     return row
+
+
+# ── Saved query by ID ──────────────────────────────────────────────────────────
+
+def get_saved_query(query_id: str, user_id: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, connection_id, question, sql, created_at FROM saved_queries WHERE id = %s AND user_id = %s",
+                (query_id, user_id),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
+# ── User connections ────────────────────────────────────────────────────────────
+
+def insert_user_connection(
+    user_id: str,
+    name: str,
+    db_type: str,
+    host: str | None,
+    port: int | None,
+    db_name: str | None,
+    db_user: str | None,
+    password_enc: str | None,
+    extra_config: dict | None = None,
+) -> dict:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO user_connections (user_id, name, db_type, host, port, db_name, db_user, password_enc, extra_config)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, user_id, name, db_type, host, port, db_name, db_user, extra_config, created_at
+                """,
+                (user_id, name, db_type, host, port, db_name, db_user, password_enc, json.dumps(extra_config or {})),
+            )
+            return _coerce_conn(dict(cur.fetchone()))
+
+
+def list_user_connections(user_id: str) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, user_id, name, db_type, host, port, db_name, db_user, extra_config, created_at FROM user_connections WHERE user_id = %s ORDER BY created_at DESC",
+                (user_id,),
+            )
+            return [_coerce_conn(dict(r)) for r in cur.fetchall()]
+
+
+def get_user_connection(connection_id: str, user_id: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, user_id, name, db_type, host, port, db_name, db_user, password_enc, extra_config, created_at FROM user_connections WHERE id = %s AND user_id = %s",
+                (connection_id, user_id),
+            )
+            row = cur.fetchone()
+            return _coerce_conn(dict(row)) if row else None
+
+
+def delete_user_connection(connection_id: str, user_id: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM user_connections WHERE id = %s AND user_id = %s", (connection_id, user_id))
+
+
+def _coerce_conn(row: dict) -> dict:
+    if isinstance(row.get("extra_config"), str):
+        row["extra_config"] = json.loads(row["extra_config"])
+    return row
+
+
+# ── Schema annotations ─────────────────────────────────────────────────────────
+
+def list_annotations(user_id: str, connection_id: str) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, table_schema, table_name, column_name, description FROM schema_annotations WHERE user_id = %s AND connection_id = %s",
+                (user_id, connection_id),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def upsert_annotation(
+    user_id: str,
+    connection_id: str,
+    table_schema: str,
+    table_name: str,
+    column_name: str | None,
+    description: str,
+) -> dict:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                DELETE FROM schema_annotations
+                WHERE user_id = %s AND connection_id = %s AND table_schema = %s AND table_name = %s
+                  AND (column_name = %s OR (column_name IS NULL AND %s IS NULL))
+                """,
+                (user_id, connection_id, table_schema, table_name, column_name, column_name),
+            )
+            cur.execute(
+                """
+                INSERT INTO schema_annotations (user_id, connection_id, table_schema, table_name, column_name, description)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, table_schema, table_name, column_name, description, created_at
+                """,
+                (user_id, connection_id, table_schema, table_name, column_name, description),
+            )
+            return dict(cur.fetchone())
+
+
+def delete_annotation(annotation_id: str, user_id: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM schema_annotations WHERE id = %s AND user_id = %s", (annotation_id, user_id))

@@ -37,11 +37,13 @@ export interface QueryResponse {
   columns: string[];
   rows: unknown[][];
   row_count: number;
+  execution_time_ms: number;
 }
 
 export interface SavedConnection {
   id: string;
   name: string;
+  db_type: string;
   host: string;
   port: number;
   database: string;
@@ -82,7 +84,7 @@ export async function runQuery(
 
 export async function createUserConnection(
   jwt: string,
-  body: { name: string; host: string; port: number; database: string; db_user: string; password: string }
+  body: { name: string; db_type?: string; host: string; port: number; database: string; db_user: string; password: string; extra_config?: Record<string, unknown> }
 ): Promise<SavedConnection> {
   const res = await fetch(`${BASE}/user-connections`, {
     method: "POST",
@@ -137,6 +139,11 @@ export async function saveQuery(
 export async function listSavedQueries(jwt: string): Promise<SavedQuery[]> {
   const res = await fetch(`${BASE}/saved-queries`, { headers: authHeaders(jwt) });
   return handleResponse<SavedQuery[]>(res);
+}
+
+export async function getSavedQuery(jwt: string, id: string): Promise<SavedQuery> {
+  const res = await fetch(`${BASE}/saved-queries/${id}`, { headers: authHeaders(jwt) });
+  return handleResponse<SavedQuery>(res);
 }
 
 export async function renameSavedQuery(jwt: string, id: string, question: string): Promise<SavedQuery> {
@@ -296,6 +303,41 @@ export async function addDashboardEditor(jwt: string, dashboardId: string, userI
 
 export async function removeDashboardEditor(jwt: string, dashboardId: string, userId: string): Promise<void> {
   await fetch(`${BASE}/dashboards/${dashboardId}/editors/${userId}`, {
+    method: "DELETE",
+    headers: authHeaders(jwt),
+  });
+}
+
+// Annotations
+
+export interface Annotation {
+  id: string;
+  table_schema: string;
+  table_name: string;
+  column_name: string | null;
+  description: string;
+}
+
+export async function listAnnotations(jwt: string, connectionId: string): Promise<Annotation[]> {
+  const res = await fetch(`${BASE}/user-connections/${connectionId}/annotations`, { headers: authHeaders(jwt) });
+  return handleResponse<Annotation[]>(res);
+}
+
+export async function upsertAnnotation(
+  jwt: string,
+  connectionId: string,
+  body: { table_schema: string; table_name: string; column_name?: string | null; description: string }
+): Promise<Annotation> {
+  const res = await fetch(`${BASE}/user-connections/${connectionId}/annotations`, {
+    method: "PUT",
+    headers: authHeaders(jwt),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<Annotation>(res);
+}
+
+export async function deleteAnnotation(jwt: string, connectionId: string, annotationId: string): Promise<void> {
+  await fetch(`${BASE}/user-connections/${connectionId}/annotations/${annotationId}`, {
     method: "DELETE",
     headers: authHeaders(jwt),
   });

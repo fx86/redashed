@@ -23,6 +23,14 @@ def list_saved_queries(user=Depends(get_current_user)):
     return [_to_response(r) for r in rows]
 
 
+@router.get("/{query_id}", response_model=SavedQueryResponse)
+def get_saved_query(query_id: str, user=Depends(get_current_user)):
+    row = local_db_service.get_saved_query(query_id, user["user_id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Query not found")
+    return _to_response(row)
+
+
 @router.patch("/{query_id}", response_model=SavedQueryResponse)
 def rename_saved_query(query_id: str, body: RenameQueryRequest, user=Depends(get_current_user)):
     if not body.question.strip():
