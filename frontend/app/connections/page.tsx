@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { listUserConnections, createUserConnection, deleteUserConnection } from "@/lib/api";
 import type { SavedConnection } from "@/lib/api";
@@ -10,6 +11,7 @@ import SavedConnectionForm from "@/components/SavedConnectionForm";
 export default function ConnectionsPage() {
   const { user, session, loading: authLoading } = useAuth();
   const jwt = session?.access_token ?? "";
+  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
@@ -18,6 +20,10 @@ export default function ConnectionsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading && !user) router.replace("/");
+  }, [mounted, authLoading, user, router]);
 
   useEffect(() => {
     if (!jwt) return;
@@ -57,13 +63,7 @@ export default function ConnectionsPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <a href="/" className="text-indigo-400 text-sm underline">Sign in</a>
-      </main>
-    );
-  }
+  if (!user) return null;
 
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100">
@@ -71,7 +71,7 @@ export default function ConnectionsPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-sm font-medium text-gray-400">Connections</h1>
+          <h1 className="text-base font-semibold text-gray-100">Connections</h1>
           {!showForm && (
             <button
               onClick={() => { setShowForm(true); setError(null); }}

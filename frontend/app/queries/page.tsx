@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
   listSavedQueries, listUserConnections, deleteSavedQuery, renameSavedQuery,
@@ -24,6 +25,7 @@ function relativeTime(iso: string): string {
 export default function QueriesPage() {
   const { user, session, loading: authLoading } = useAuth();
   const jwt = session?.access_token ?? "";
+  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [queries, setQueries] = useState<SavedQuery[]>([]);
@@ -41,6 +43,10 @@ export default function QueriesPage() {
   const [added, setAdded] = useState<string | null>(null);   // dashboard id just confirmed
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading && !user) router.replace("/");
+  }, [mounted, authLoading, user, router]);
 
   useEffect(() => {
     if (!jwt) return;
@@ -106,13 +112,7 @@ export default function QueriesPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <a href="/" className="text-indigo-400 text-sm underline">Sign in</a>
-      </main>
-    );
-  }
+  if (!user) return null;
 
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100">
@@ -120,7 +120,7 @@ export default function QueriesPage() {
 
       {/* Subbar */}
       <div className="flex items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 gap-3">
-        <h1 className="text-[15px] font-medium text-gray-100">All Queries</h1>
+        <h1 className="text-base font-semibold text-gray-100">All Queries</h1>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 flex-shrink-0">
@@ -188,7 +188,7 @@ export default function QueriesPage() {
                     />
                   ) : (
                     <span
-                      className="text-gray-100 font-medium truncate block cursor-text hover:text-white"
+                      className="text-sm text-gray-100 font-medium truncate block cursor-text hover:text-white"
                       onDoubleClick={() => startEdit(q)}
                       title="Double-click to rename"
                     >

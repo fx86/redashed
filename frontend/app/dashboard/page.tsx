@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ResponsiveGridLayout } from "react-grid-layout";
 import { useContainerWidth } from "react-grid-layout/react";
 import "react-grid-layout/css/styles.css";
@@ -28,6 +29,7 @@ export default function DashboardPage() {
   const { user, session, loading: authLoading } = useAuth();
   const registry = useRegistry();
   const jwt = session?.access_token ?? "";
+  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
@@ -50,6 +52,10 @@ export default function DashboardPage() {
   activeDashboardRef.current = activeDashboard;
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading && !user) router.replace("/");
+  }, [mounted, authLoading, user, router]);
 
   useEffect(() => {
     if (!jwt) return;
@@ -174,15 +180,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">
-          <a href="/" className="underline hover:text-gray-300">Sign in</a> to view dashboards.
-        </p>
-      </main>
-    );
-  }
+  if (!user) return null;
 
   const chartTypes = registry.all().map((d) => d.type);
 
@@ -206,7 +204,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 items-start">
             {/* Sidebar */}
             <div className="space-y-2">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">My Dashboards</p>
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Dashboards</p>
               {dashboards.length === 0 && (
                 <p className="text-xs text-gray-600">No dashboards yet. Save a query from the query view.</p>
               )}
@@ -290,33 +288,50 @@ export default function DashboardPage() {
                           className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col"
                         >
                           {/* Header */}
-                          <div className={`drag-handle flex items-start justify-between gap-2 px-4 py-3 border-b border-gray-800 flex-shrink-0 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
-                            <p className="text-sm text-gray-200 font-medium leading-snug select-none">{tile.question}</p>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              {/* Chart type switcher — only for editors */}
-                              {canEdit && res && ct !== "table" && chartTypes.map((t) => (
-                                <button
-                                  key={t}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  onClick={() => handleChartTypeChange(tile, t as ChartType)}
-                                  className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
-                                    ct === t ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"
-                                  }`}
-                                >
-                                  {t}
-                                </button>
-                              ))}
+                          <div className={`drag-handle px-4 pt-3 pb-2 border-b border-gray-800/60 flex-shrink-0 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
+                            {/* Title row — full width */}
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm text-gray-100 font-medium leading-snug select-none">{tile.question}</p>
                               {canEdit && (
                                 <button
                                   onMouseDown={(e) => e.stopPropagation()}
                                   onClick={() => handleDeleteTile(tile)}
-                                  className="text-gray-600 hover:text-red-400 text-xs ml-1 transition-colors"
+                                  className="w-5 h-5 flex items-center justify-center rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 flex-shrink-0 transition-colors mt-0.5"
                                   aria-label="Remove tile"
                                 >
-                                  ✕
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
                                 </button>
                               )}
                             </div>
+                            {/* Controls row — chart switcher + drag hint */}
+                            {canEdit && res && (
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-1">
+                                  {chartTypes.map((t) => (
+                                    <button
+                                      key={t}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onClick={() => handleChartTypeChange(tile, t as ChartType)}
+                                      className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                                        ct === t ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"
+                                      }`}
+                                    >
+                                      {t}
+                                    </button>
+                                  ))}
+                                </div>
+                                {/* Explicit drag affordance */}
+                                <div className="text-gray-700 cursor-grab" title="Drag to move">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="7" r="1.5" /><circle cx="15" cy="7" r="1.5" />
+                                    <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                                    <circle cx="9" cy="17" r="1.5" /><circle cx="15" cy="17" r="1.5" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Content */}

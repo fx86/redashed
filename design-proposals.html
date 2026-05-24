@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Querywise — Design Proposals</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .screen-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 8px;
+    }
+    .annotation {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #a5b4fc;
+      padding: 6px 10px;
+    }
+    .annotation strong { color: #e0e7ff; }
+    .change-tag {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: #312e81;
+      color: #a5b4fc;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    /* Subtle grid background for login */
+    .grid-bg {
+      background-color: #030712;
+      background-image:
+        linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    /* Thin scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+  <!-- Page header -->
+  <div class="border-b border-gray-800 px-8 py-5 flex items-center justify-between sticky top-0 bg-gray-950/95 backdrop-blur z-50">
+    <div>
+      <h1 class="text-base font-semibold text-gray-100">Querywise — Design Proposals</h1>
+      <p class="text-xs text-gray-500 mt-0.5">Visual reference for the critique. Each section shows the proposed change with annotations.</p>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-gray-500">
+      <a href="#login" class="hover:text-gray-300 transition-colors">Login</a>
+      <span class="text-gray-700">·</span>
+      <a href="#nav" class="hover:text-gray-300 transition-colors">Nav</a>
+      <span class="text-gray-700">·</span>
+      <a href="#query-editor" class="hover:text-gray-300 transition-colors">Query Editor</a>
+      <span class="text-gray-700">·</span>
+      <a href="#dashboard" class="hover:text-gray-300 transition-colors">Dashboard</a>
+      <span class="text-gray-700">·</span>
+      <a href="#queries-list" class="hover:text-gray-300 transition-colors">Queries</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1200px] mx-auto px-8 py-12 space-y-20">
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 1. LOGIN PAGE -->
+    <!-- ─────────────────────────────────────────────── -->
+    <section id="login">
+      <div class="screen-label">1 — Login Page</div>
+      <h2 class="text-lg font-semibold text-gray-100 mb-1">Login <span class="change-tag">redesigned</span></h2>
+      <p class="text-sm text-gray-400 mb-6 max-w-xl">
+        Current: content floats in dead center of a completely black screen with ~70% empty space. The white Google button feels foreign.
+        Proposal: subtle grid background signals the data/analytics context; card has a visible container; Google button matches the dark theme.
+      </p>
+
+      <!-- Before / After side by side -->
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Before -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before</p>
+          <div class="rounded-xl overflow-hidden border border-gray-800" style="height:420px; background:#030712; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:20px;">
+            <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white text-lg font-medium">Q</div>
+            <p class="text-2xl font-semibold text-gray-100">Querywise</p>
+            <p class="text-sm text-gray-400 text-center px-8">Connect your data warehouse and ask questions in plain English.</p>
+            <button class="flex items-center gap-3 px-5 py-3 rounded-lg bg-white text-gray-900 font-medium text-sm">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+              Sign in with Google
+            </button>
+            <p class="text-xs text-gray-700">Content is isolated, no context, lots of void</p>
+          </div>
+        </div>
+
+        <!-- After -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After</p>
+          <div class="grid-bg rounded-xl overflow-hidden border border-gray-800" style="height:420px; display:flex; align-items:center; justify-content:center;">
+            <div class="bg-gray-900/80 border border-gray-700/60 rounded-2xl p-8 w-80 shadow-2xl backdrop-blur-sm space-y-5">
+              <div class="space-y-2">
+                <div class="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center text-white text-base font-semibold">Q</div>
+                <h1 class="text-xl font-semibold text-gray-100 tracking-tight">Querywise</h1>
+                <p class="text-sm text-gray-400 leading-relaxed">AI-powered queries on your own data warehouse.</p>
+              </div>
+              <div class="space-y-2 pt-1">
+                <button class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 hover:border-gray-600 text-gray-200 font-medium text-sm transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+                  Continue with Google
+                </button>
+              </div>
+              <p class="text-[11px] text-gray-600 text-center">No credit card required</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="annotation"><strong>Grid background</strong> — the faint dot grid evokes data/spreadsheets without being distracting. Anchors the card visually.</div>
+        <div class="annotation"><strong>Card container</strong> — the frosted card gives content a frame, eliminating the floating-in-void effect.</div>
+        <div class="annotation"><strong>Google button</strong> — matches dark system. No white rectangle jarring against the dark background.</div>
+      </div>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 2. NAV -->
+    <!-- ─────────────────────────────────────────────── -->
+    <section id="nav">
+      <div class="screen-label">2 — Navigation</div>
+      <h2 class="text-lg font-semibold text-gray-100 mb-1">Nav IA <span class="change-tag">restructured</span></h2>
+      <p class="text-sm text-gray-400 mb-6 max-w-xl">
+        Current nav has "Query editor" as a link AND a "+ New query" button — both go to <code class="text-indigo-400">/</code>. Connections lives in primary nav even though it's admin setup.
+      </p>
+
+      <div class="space-y-4 mb-6">
+        <!-- Before -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before</p>
+          <nav class="flex items-center h-[46px] bg-gray-900 border border-gray-800 rounded-lg px-4 gap-1">
+            <div class="w-[26px] h-[26px] bg-indigo-500 rounded-md flex items-center justify-center text-white text-xs font-medium flex-shrink-0">Q</div>
+            <span class="text-sm font-medium text-gray-100 mx-4">Querywise</span>
+            <a class="px-2.5 h-[46px] flex items-center text-xs border-b-2 border-indigo-500 text-gray-100 font-medium whitespace-nowrap">Dashboards</a>
+            <a class="px-2.5 h-[46px] flex items-center text-xs border-b-2 border-transparent text-gray-400 whitespace-nowrap">Queries</a>
+            <a class="px-2.5 h-[46px] flex items-center text-xs border-b-2 border-transparent text-gray-400 whitespace-nowrap">Query editor</a>
+            <a class="px-2.5 h-[46px] flex items-center text-xs border-b-2 border-transparent text-gray-400 whitespace-nowrap">Connections</a>
+            <div class="ml-auto flex items-center gap-2">
+              <a class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600 text-white text-xs font-medium">+ New query</a>
+              <div class="w-[26px] h-[26px] bg-indigo-500 rounded-full flex items-center justify-center text-white text-[10px] font-medium">F</div>
+            </div>
+            <div class="absolute top-[58px] left-[300px] bg-red-900/30 border border-red-800 rounded text-red-400 text-[10px] px-2 py-1 pointer-events-none">← same destination as "New query" button</div>
+          </nav>
+        </div>
+
+        <!-- After -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After</p>
+          <nav class="flex items-center h-[46px] bg-gray-900 border border-gray-800 rounded-lg px-4 gap-1">
+            <div class="w-[26px] h-[26px] bg-indigo-500 rounded-md flex items-center justify-center text-white text-xs font-medium flex-shrink-0">Q</div>
+            <span class="text-sm font-medium text-gray-100 mx-4">Querywise</span>
+
+            <!-- Primary nav: content-oriented -->
+            <a class="px-2.5 h-[46px] flex items-center text-xs border-b-2 border-indigo-500 text-gray-100 font-medium whitespace-nowrap">Dashboards</a>
+            <a class="px-2.5 h-[46px] flex items-center text-xs border-b-2 border-transparent text-gray-400 hover:text-gray-100 whitespace-nowrap">Queries</a>
+
+            <div class="ml-auto flex items-center gap-2">
+              <!-- Primary CTA — single, unambiguous -->
+              <a class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New query
+              </a>
+
+              <!-- Settings (connections lives here) -->
+              <button title="Settings & Connections" class="w-[30px] h-[30px] rounded-md text-gray-500 hover:text-gray-300 hover:bg-gray-800 flex items-center justify-center transition-colors">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
+
+              <!-- User avatar -->
+              <div class="w-[26px] h-[26px] bg-indigo-500 rounded-full flex items-center justify-center text-white text-[10px] font-medium cursor-pointer hover:bg-indigo-400 transition-colors">F</div>
+            </div>
+          </nav>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="annotation"><strong>Removed "Query editor" link</strong> — "New query" button already covers this. Two nav items going to the same URL is confusing.</div>
+        <div class="annotation"><strong>Connections → Settings gear</strong> — Admin setup doesn't belong in primary nav alongside content pages. Gear icon is universally understood as settings.</div>
+        <div class="annotation"><strong>2 primary nav links</strong> — Dashboards and Queries are the two views users return to. Everything else is secondary.</div>
+      </div>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 3. QUERY EDITOR -->
+    <!-- ─────────────────────────────────────────────── -->
+    <section id="query-editor">
+      <div class="screen-label">3 — Query Editor</div>
+      <h2 class="text-lg font-semibold text-gray-100 mb-1">Query Editor <span class="change-tag">emphasis + hierarchy</span></h2>
+      <p class="text-sm text-gray-400 mb-6 max-w-xl">
+        Current: the core action (asking a question) has the same visual weight as every other form element. The input looks like a small textarea, not a conversation entry point.
+      </p>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Before -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before</p>
+          <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden" style="height:500px;">
+            <!-- Mini nav -->
+            <div class="flex items-center h-[46px] bg-gray-900 border-b border-gray-800 px-4 gap-2">
+              <div class="w-5 h-5 bg-indigo-500 rounded text-white text-[9px] flex items-center justify-center font-bold">Q</div>
+              <span class="text-xs font-medium text-gray-100 mx-2">Querywise</span>
+              <span class="text-[10px] text-gray-100 border-b-2 border-indigo-500 h-full flex items-center px-2">Dashboards</span>
+              <span class="text-[10px] text-gray-400 px-2">Queries</span>
+              <span class="text-[10px] text-gray-400 px-2">Query editor</span>
+              <span class="text-[10px] text-gray-400 px-2">Connections</span>
+              <div class="ml-auto"><span class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">+ New query</span></div>
+            </div>
+            <div class="p-4 space-y-3">
+              <!-- Connection crumb -->
+              <div class="text-[10px] text-gray-500">← <span class="text-gray-300">Production DB</span> / analytics</div>
+              <!-- Mode toggle -->
+              <div class="flex gap-1 bg-gray-800 rounded-lg p-0.5 w-fit border border-gray-700">
+                <span class="px-2.5 py-1 rounded-md text-[10px] bg-indigo-600 text-white">Ask AI</span>
+                <span class="px-2.5 py-1 rounded-md text-[10px] text-gray-400">Write SQL</span>
+              </div>
+              <!-- Input — same weight as everything else -->
+              <div class="grid grid-cols-[160px_1fr] gap-3">
+                <div class="bg-gray-900 border border-gray-800 rounded p-2 text-[9px] text-gray-600 space-y-1">
+                  <p class="text-gray-500 font-medium">SCHEMA</p>
+                  <p>orders (12 cols)</p>
+                  <p>users (8 cols)</p>
+                  <p>products (6 cols)</p>
+                </div>
+                <div class="space-y-2">
+                  <textarea class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-[10px] text-gray-400 resize-none h-14" placeholder="Ask a question about your data… (Enter to run)" readonly></textarea>
+                  <div class="flex gap-2">
+                    <button class="px-3 py-1.5 bg-indigo-600 text-white text-[10px] rounded">Run</button>
+                  </div>
+                  <p class="text-[9px] text-gray-700">← same text-xs size as everything else, no visual hierarchy</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- After -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After</p>
+          <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden" style="height:500px;">
+            <!-- Improved nav -->
+            <div class="flex items-center h-[46px] bg-gray-900 border-b border-gray-800 px-4 gap-2">
+              <div class="w-5 h-5 bg-indigo-500 rounded text-white text-[9px] flex items-center justify-center font-bold">Q</div>
+              <span class="text-xs font-medium text-gray-100 mx-2">Querywise</span>
+              <span class="text-[10px] text-gray-100 border-b-2 border-indigo-500 h-full flex items-center px-2">Dashboards</span>
+              <span class="text-[10px] text-gray-400 px-2">Queries</span>
+              <div class="ml-auto flex items-center gap-2">
+                <span class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded-md flex items-center gap-1">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  New query
+                </span>
+                <div class="w-5 h-5 bg-indigo-500 rounded-full text-white text-[8px] flex items-center justify-center">F</div>
+              </div>
+            </div>
+            <div class="p-4 space-y-3">
+              <!-- Connection crumb with icon -->
+              <div class="flex items-center gap-1.5 text-[10px]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <span class="text-gray-300 font-medium">Production DB</span>
+                <span class="text-gray-700">/</span>
+                <span class="text-gray-500">analytics</span>
+              </div>
+
+              <!-- Mode toggle + INPUT with more emphasis -->
+              <div class="grid grid-cols-[140px_1fr] gap-3">
+                <div class="bg-gray-900 border border-gray-800 rounded-lg p-2.5 text-[9px] text-gray-600 space-y-1.5">
+                  <p class="text-[9px] text-gray-500 font-semibold tracking-wide uppercase">Schema</p>
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-1 text-gray-400"><span class="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0"></span>orders</div>
+                    <div class="flex items-center gap-1 text-gray-400"><span class="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0"></span>users</div>
+                    <div class="flex items-center gap-1 text-gray-400"><span class="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0"></span>products</div>
+                  </div>
+                </div>
+                <div class="space-y-2.5">
+                  <!-- Mode toggle -->
+                  <div class="flex gap-1 bg-gray-800 rounded-lg p-0.5 w-fit border border-gray-700">
+                    <span class="px-2 py-1 rounded-md text-[9px] bg-indigo-600 text-white">Ask AI</span>
+                    <span class="px-2 py-1 rounded-md text-[9px] text-gray-400">Write SQL</span>
+                  </div>
+
+                  <!-- The ask-a-question input — visually prominent -->
+                  <div class="bg-gray-900 border border-indigo-500/40 rounded-xl p-3 space-y-2.5 ring-1 ring-indigo-500/10">
+                    <textarea class="w-full bg-transparent border-none outline-none text-[11px] text-gray-200 resize-none h-12 placeholder-gray-600" placeholder="Ask anything about your data…" readonly style="font-size:11px;"></textarea>
+                    <div class="flex items-center justify-between border-t border-gray-800 pt-2">
+                      <div class="flex items-center gap-2">
+                        <!-- mic icon -->
+                        <button class="text-gray-600 hover:text-gray-400 transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                        </button>
+                        <span class="text-[9px] text-gray-700">Shift+Enter for newline</span>
+                      </div>
+                      <button class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] rounded-lg font-medium flex items-center gap-1.5 transition-colors">
+                        Run
+                        <span class="text-[8px] text-indigo-300">⌘↵</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Results actions — primary visual weight -->
+                  <div class="flex gap-2 pt-1">
+                    <button class="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 hover:border-indigo-500 hover:text-indigo-400 text-gray-300 transition-colors font-medium">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                      Save query
+                      <span class="text-[8px] text-gray-600 ml-0.5">⌘S</span>
+                    </button>
+                    <button class="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-medium">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                      Add to dashboard
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="annotation"><strong>Input container</strong> — the query box has its own rounded card with an indigo tint border, making it the visual focus of the page rather than another form field.</div>
+        <div class="annotation"><strong>Actions toolbar inside the box</strong> — mic, hint text, and Run button are all inside the input container. This is the "chat input" pattern users know from AI products.</div>
+        <div class="annotation"><strong>"Add to dashboard" as a filled button</strong> — currently both Save and Add to Dashboard are identical ghost buttons. The dashboard action is the key outcome and should look primary.</div>
+      </div>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 4. DASHBOARD -->
+    <!-- ─────────────────────────────────────────────── -->
+    <section id="dashboard">
+      <div class="screen-label">4 — Dashboard</div>
+      <h2 class="text-lg font-semibold text-gray-100 mb-1">Dashboard Tile <span class="change-tag">header + controls</span></h2>
+      <p class="text-sm text-gray-400 mb-6 max-w-xl">
+        Current: question text, chart type buttons, and delete ✕ share a single header row. Long questions crowd the controls. Buttons are 10px text. No drag affordance visible.
+      </p>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Before tile -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden" style="height:220px; display:flex; flex-direction:column;">
+            <!-- Crowded header -->
+            <div class="flex items-start justify-between gap-2 px-4 py-3 border-b border-gray-800 cursor-grab">
+              <p class="text-sm text-gray-200 font-medium leading-snug">Revenue by product category for the last 90 days</p>
+              <div class="flex items-center gap-1 flex-shrink-0">
+                <button class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600 text-white">bar</button>
+                <button class="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">line</button>
+                <button class="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">scatter</button>
+                <button class="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">table</button>
+                <button class="text-gray-600 text-xs ml-1">✕</button>
+              </div>
+            </div>
+            <!-- Content placeholder -->
+            <div class="flex-1 p-3 flex items-center justify-center">
+              <div class="w-full h-full bg-gray-800/50 rounded-lg flex items-center justify-center">
+                <p class="text-xs text-gray-600">chart area</p>
+              </div>
+            </div>
+          </div>
+          <p class="text-[10px] text-gray-700 mt-2">← question and controls fight for space. 10px buttons. No drag hint.</p>
+        </div>
+
+        <!-- After tile -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden" style="height:220px; display:flex; flex-direction:column;">
+            <!-- Title row — full width, no controls competing -->
+            <div class="px-4 pt-3 pb-2 border-b border-gray-800/60">
+              <div class="flex items-start justify-between">
+                <p class="text-sm text-gray-100 font-medium leading-snug">Revenue by product category for the last 90 days</p>
+                <button class="text-gray-700 hover:text-red-400 text-xs transition-colors ml-3 mt-0.5 flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-red-950/30">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <!-- Controls toolbar below the title — separate row, larger targets -->
+              <div class="flex items-center justify-between mt-2">
+                <div class="flex items-center gap-1">
+                  <button class="text-xs px-2 py-1 rounded-md bg-indigo-600 text-white font-medium">Bar</button>
+                  <button class="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400 hover:bg-gray-700">Line</button>
+                  <button class="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400 hover:bg-gray-700">Scatter</button>
+                  <button class="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400 hover:bg-gray-700">Table</button>
+                </div>
+                <!-- Drag handle — visible affordance -->
+                <div class="drag-handle cursor-grab flex items-center gap-0.5 text-gray-700 hover:text-gray-500 transition-colors" title="Drag to move">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/></svg>
+                </div>
+              </div>
+            </div>
+            <!-- Content -->
+            <div class="flex-1 p-3 flex items-center justify-center min-h-0">
+              <div class="w-full h-full bg-gray-800/50 rounded-lg flex items-center justify-center">
+                <p class="text-xs text-gray-600">chart area</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard sidebar comparison -->
+      <h3 class="text-base font-medium text-gray-200 mb-1 mt-8">Dashboard sidebar <span class="change-tag">hit targets + clarity</span></h3>
+      <p class="text-sm text-gray-400 mb-4 max-w-xl">The share (12px SVG) and delete (✕ text) icons are too small to tap. The "shared" badge is near-invisible at 10px/70% opacity.</p>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Before sidebar -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 w-48 space-y-1.5">
+            <p class="text-[9px] text-gray-500 font-medium uppercase tracking-wide mb-2">My Dashboards</p>
+            <div class="flex items-center justify-between rounded-lg px-3 py-2 bg-indigo-600/20 border border-indigo-600/40 cursor-pointer">
+              <span class="text-xs truncate flex-1 min-w-0">Q4 Sales Review</span>
+              <div class="flex items-center gap-1 ml-2">
+                <!-- 12px icon -->
+                <button class="text-gray-600 hover:text-indigo-400">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                </button>
+                <button class="text-gray-600 hover:text-red-400 text-xs">✕</button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 cursor-pointer">
+              <span class="text-xs truncate flex-1 min-w-0 text-gray-400">Ops Metrics</span>
+              <span class="text-[10px] text-indigo-400/70 font-medium ml-1">shared</span>
+            </div>
+          </div>
+          <p class="text-[10px] text-gray-700 mt-2">← 12px icons, "shared" at 70% opacity, no visible tap targets</p>
+        </div>
+
+        <!-- After sidebar -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 w-48 space-y-1.5">
+            <p class="text-[9px] text-gray-500 font-medium uppercase tracking-wide mb-2">Dashboards</p>
+            <div class="group flex items-center justify-between rounded-lg px-2.5 py-2 bg-indigo-600/20 border border-indigo-600/40 cursor-pointer">
+              <span class="text-xs truncate flex-1 min-w-0 text-gray-100">Q4 Sales Review</span>
+              <!-- Larger, icon-button sized targets -->
+              <div class="flex items-center gap-0.5 ml-1.5 flex-shrink-0">
+                <button class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-700 text-gray-500 hover:text-indigo-400 transition-colors" title="Share">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                </button>
+                <button class="w-6 h-6 flex items-center justify-center rounded hover:bg-red-950/40 text-gray-500 hover:text-red-400 transition-colors" title="Delete">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+            <!-- Shared dashboard — visible badge -->
+            <div class="flex items-center justify-between rounded-lg px-2.5 py-2 bg-gray-800/60 border border-gray-700 cursor-pointer">
+              <span class="text-xs truncate flex-1 min-w-0 text-gray-300">Ops Metrics</span>
+              <span class="text-[9px] bg-indigo-900/60 text-indigo-300 border border-indigo-800/60 rounded-full px-2 py-0.5 font-medium ml-1.5 flex-shrink-0">shared</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="annotation"><strong>Title full-width</strong> — question text gets the full header width, never truncates against buttons.</div>
+        <div class="annotation"><strong>Controls on second row</strong> — chart type switcher + drag handle live below the title. More space, bigger touch targets (text-xs = 12px, not 10px).</div>
+        <div class="annotation"><strong>Drag handle explicit</strong> — the 6-dot grip icon tells users this tile is draggable. No invisible behaviour.</div>
+      </div>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 5. QUERIES LIST -->
+    <!-- ─────────────────────────────────────────────── -->
+    <section id="queries-list">
+      <div class="screen-label">5 — Queries List</div>
+      <h2 class="text-lg font-semibold text-gray-100 mb-1">Queries List <span class="change-tag">typography + empty state</span></h2>
+      <p class="text-sm text-gray-400 mb-6 max-w-xl">
+        The current list is functional. Two things: the empty state when not authenticated just renders a lone "Sign in" link. And the type scale is flat — all text-xs everywhere.
+      </p>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Before: unauthenticated empty state -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before — unauthenticated (/queries)</p>
+          <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden" style="height:200px; display:flex; align-items:center; justify-content:center;">
+            <a href="#" class="text-indigo-400 text-sm underline">Sign in</a>
+          </div>
+          <p class="text-[10px] text-gray-700 mt-2">← No nav. No context. Dead end on a black screen.</p>
+        </div>
+
+        <!-- After: redirect to proper login -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After — redirect to / (login screen)</p>
+          <div class="grid-bg rounded-xl overflow-hidden border border-gray-800" style="height:200px; display:flex; align-items:center; justify-content:center;">
+            <div class="bg-gray-900/80 border border-gray-700/60 rounded-xl p-5 w-60 space-y-3 text-center backdrop-blur-sm">
+              <div class="w-7 h-7 bg-indigo-500 rounded-lg flex items-center justify-center text-white text-xs font-semibold mx-auto">Q</div>
+              <p class="text-sm font-medium text-gray-200">Sign in to view queries</p>
+              <button class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-xs font-medium">
+                <svg width="12" height="12" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+                Continue with Google
+              </button>
+            </div>
+          </div>
+          <p class="text-[10px] text-gray-500 mt-2">← Branded, contextual, gives the user a next action.</p>
+        </div>
+      </div>
+
+      <!-- Type scale improvement -->
+      <h3 class="text-base font-medium text-gray-200 mb-3 mt-6">Type scale — flatten vs hierarchy</h3>
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <!-- Before -->
+        <div>
+          <p class="text-xs text-gray-600 mb-2 font-medium">Before — everything text-xs</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-400">All Queries</span>
+              <span class="text-xs text-gray-400 bg-indigo-600 px-2 py-1 rounded">+ New query</span>
+            </div>
+            <div class="border border-gray-700 rounded-lg overflow-hidden text-xs">
+              <div class="bg-gray-800 px-3 py-1.5 flex gap-8 text-[10px] text-gray-500 font-medium uppercase">
+                <span>Name</span><span>Source</span><span>Saved</span>
+              </div>
+              <div class="px-3 py-2 border-t border-gray-700/60 flex gap-8 text-xs text-gray-300">
+                <span class="flex-1 truncate">Revenue by product category</span>
+                <span class="text-gray-500 w-20">Production</span>
+                <span class="text-gray-600 w-16">2d ago</span>
+              </div>
+              <div class="px-3 py-2 border-t border-gray-700/60 flex gap-8 text-xs text-gray-300">
+                <span class="flex-1 truncate">DAU last 30 days</span>
+                <span class="text-gray-500 w-20">Production</span>
+                <span class="text-gray-600 w-16">5d ago</span>
+              </div>
+            </div>
+            <p class="text-[10px] text-gray-700">← page title "All Queries" is text-sm text-gray-400 — barely different from table rows</p>
+          </div>
+        </div>
+
+        <!-- After -->
+        <div>
+          <p class="text-xs text-gray-400 mb-2 font-medium">After — proper heading at text-base</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <!-- Proper page heading -->
+              <h1 class="text-base font-semibold text-gray-100">All Queries</h1>
+              <button class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New query
+              </button>
+            </div>
+            <div class="border border-gray-700 rounded-lg overflow-hidden">
+              <div class="bg-gray-800/60 px-3 py-1.5 flex gap-8 text-[10px] text-gray-500 font-semibold uppercase tracking-wide">
+                <span class="flex-1">Name</span><span class="w-20">Source</span><span class="w-16">Saved</span>
+              </div>
+              <div class="px-3 py-2.5 border-t border-gray-700/60 flex gap-8 items-center hover:bg-gray-800/40 transition-colors cursor-default">
+                <span class="flex-1 truncate text-sm font-medium text-gray-100">Revenue by product category</span>
+                <span class="text-xs text-gray-500 w-20">Production</span>
+                <span class="text-xs text-gray-600 w-16">2d ago</span>
+              </div>
+              <div class="px-3 py-2.5 border-t border-gray-700/60 flex gap-8 items-center hover:bg-gray-800/40 transition-colors cursor-default">
+                <span class="flex-1 truncate text-sm font-medium text-gray-100">DAU last 30 days</span>
+                <span class="text-xs text-gray-500 w-20">Production</span>
+                <span class="text-xs text-gray-600 w-16">5d ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="annotation"><strong>Unauthenticated redirect</strong> — all protected pages should render the login card (or redirect to /) rather than a bare "Sign in" anchor.</div>
+        <div class="annotation"><strong>Page heading text-base/font-semibold</strong> — enough to read as a heading without shouting. Creates separation from the table content below.</div>
+        <div class="annotation"><strong>Row text text-sm/gray-100 vs metadata text-xs/gray-500</strong> — query names should be readable. Timestamps and source are metadata, so subdued.</div>
+      </div>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- SUMMARY -->
+    <!-- ─────────────────────────────────────────────── -->
+    <section class="border-t border-gray-800 pt-10">
+      <div class="screen-label">Summary</div>
+      <h2 class="text-lg font-semibold text-gray-100 mb-4">Change priority</h2>
+      <div class="space-y-2">
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+          <span class="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-900 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5">P0</span>
+          <div>
+            <p class="text-sm font-medium text-gray-100">Unauthenticated pages redirect to <code class="text-indigo-400 text-xs">/</code></p>
+            <p class="text-xs text-gray-500 mt-0.5">Blocked users hitting /queries or /dashboard via a shared URL currently see a black screen with a single underlined link. 1-line fix per page.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+          <span class="text-[10px] font-bold text-orange-400 bg-orange-950/40 border border-orange-900 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5">P1</span>
+          <div>
+            <p class="text-sm font-medium text-gray-100">Nav IA — remove "Query editor" link, move Connections to settings gear</p>
+            <p class="text-xs text-gray-500 mt-0.5">Reduces nav from 4 items + CTA to 2 items + CTA. Eliminates duplicate destination. Small change, big clarity gain.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+          <span class="text-[10px] font-bold text-yellow-400 bg-yellow-950/40 border border-yellow-900 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5">P2</span>
+          <div>
+            <p class="text-sm font-medium text-gray-100">Dashboard tile header — split title and chart controls onto separate rows, add drag handle</p>
+            <p class="text-xs text-gray-500 mt-0.5">Prevents long questions crowding the controls. Makes draggability discoverable.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+          <span class="text-[10px] font-bold text-yellow-400 bg-yellow-950/40 border border-yellow-900 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5">P2</span>
+          <div>
+            <p class="text-sm font-medium text-gray-100">Query input as a card — give the main action visual weight</p>
+            <p class="text-xs text-gray-500 mt-0.5">The product's core action currently looks like a small form field. A contained card with toolbar treatment makes it feel like the entry point it is.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+          <span class="text-[10px] font-bold text-gray-400 bg-gray-800/60 border border-gray-700 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5">P3</span>
+          <div>
+            <p class="text-sm font-medium text-gray-100">Login page — card + grid background, dark-system Google button</p>
+            <p class="text-xs text-gray-500 mt-0.5">More polish than function, but first impressions matter.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+          <span class="text-[10px] font-bold text-gray-400 bg-gray-800/60 border border-gray-700 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5">P3</span>
+          <div>
+            <p class="text-sm font-medium text-gray-100">Type scale — page headings at text-base/font-semibold, not text-sm/gray-400</p>
+            <p class="text-xs text-gray-500 mt-0.5">One mechanical find-and-replace across pages. Instant legibility improvement.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="border-t border-gray-800/50 mt-16 px-8 py-5 text-[11px] text-gray-700 text-center">
+    Design proposals for Querywise — for review only, not production code.
+  </div>
+</body>
+</html>

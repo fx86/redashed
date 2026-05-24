@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import {
   listUserConnections,
@@ -11,9 +11,10 @@ import {
   saveQuery,
 } from "@/lib/api";
 import type { SavedConnection, TableInfo, QueryResponse } from "@/lib/api";
-import { selectChartType } from "@bi-tool/charts";
+import { selectChartType, useRegistry } from "@bi-tool/charts";
 import type { ChartType, ChartConfig } from "@bi-tool/charts";
 import Nav from "@/components/Nav";
+import { useVoiceInput } from "@/lib/useVoiceInput";
 import SavedConnectionForm from "@/components/SavedConnectionForm";
 import SchemaPanel from "@/components/SchemaPanel";
 import QueryInput from "@/components/QueryInput";
@@ -44,7 +45,25 @@ export default function Home() {
   const [queryMode, setQueryMode] = useState<QueryMode>("ai");
   const [sqlInput, setSqlInput] = useState("");
 
+  const registry = useRegistry();
   const jwt = session?.access_token ?? "";
+
+  const sqlVoice = useVoiceInput((t) =>
+    setSqlInput((prev) => (prev.trim() ? `${prev}\n${t}` : t))
+  );
+
+  // Cmd+S saves the current query from anywhere on the page
+  const handleSaveQueryRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s" && step === "query" && result && !saved) {
+        e.preventDefault();
+        handleSaveQueryRef.current();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [step, result, saved]);
 
   useEffect(() => {
     if (!jwt) {
@@ -148,7 +167,7 @@ export default function Home() {
       res.columns.forEach((col, i) => { obj[col] = row[i]; });
       return obj;
     });
-    const config = selectChartType(res.columns, rows);
+    const config = selectChartType(res.columns, rows, registry);
     setChartConfig(config);
     setChartType(config.type);
   }
@@ -166,6 +185,7 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "Failed to save query");
     }
   }
+  handleSaveQueryRef.current = handleSaveQuery;
 
   function goToConnections() {
     setStep("connections");
@@ -188,20 +208,31 @@ export default function Home() {
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-        <div className="text-center space-y-6 w-full max-w-sm">
-          <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white text-lg font-medium mx-auto">Q</div>
-          <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">Querywise</h1>
-          <p className="text-gray-400 text-sm">
-            Connect your data warehouse and ask questions in plain English.
-          </p>
+      <main
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{
+          backgroundColor: "#030712",
+          backgroundImage:
+            "linear-gradient(rgba(99,102,241,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.07) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      >
+        <div className="bg-gray-900/80 border border-gray-700/60 rounded-2xl p-8 w-full max-w-xs shadow-2xl backdrop-blur-sm space-y-6">
+          <div className="space-y-2">
+            <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center text-white text-base font-semibold">Q</div>
+            <h1 className="text-xl font-semibold text-gray-100 tracking-tight">Querywise</h1>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              AI-powered queries on your own data warehouse.
+            </p>
+          </div>
           <button
             onClick={signInWithGoogle}
-            className="flex items-center gap-3 mx-auto px-5 py-3 rounded-lg bg-white text-gray-900 font-medium text-sm hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 hover:border-gray-600 hover:bg-gray-750 text-gray-200 font-medium text-sm transition-colors"
           >
             <GoogleIcon />
-            Sign in with Google
+            Continue with Google
           </button>
+          <p className="text-[11px] text-gray-700 text-center">No credit card required</p>
         </div>
       </main>
     );
@@ -322,20 +353,41 @@ export default function Home() {
                   {/* SQL mode */}
                   {queryMode === "sql" && (
                     <div className="space-y-2">
-                      <textarea
-                        value={sqlInput}
-                        onChange={(e) => setSqlInput(e.target.value)}
-                        placeholder={"SELECT\n  *\nFROM your_table\nLIMIT 100"}
-                        rows={7}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-sm font-mono text-violet-300 resize-none focus:outline-none focus:border-indigo-500 placeholder:text-gray-700"
-                        spellCheck={false}
-                      />
+                      <div className="relative">
+                        <textarea
+                          value={sqlInput}
+                          onChange={(e) => setSqlInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                              e.preventDefault();
+                              handleRunSql();
+                            }
+                          }}
+                          placeholder={"SELECT\n  *\nFROM your_table\nLIMIT 100"}
+                          rows={7}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 pr-9 text-sm font-mono text-violet-300 resize-none focus:outline-none focus:border-indigo-500 placeholder:text-gray-700"
+                          spellCheck={false}
+                        />
+                        {sqlVoice.supported && (
+                          <button
+                            type="button"
+                            onClick={sqlVoice.toggle}
+                            title={sqlVoice.listening ? "Stop recording" : "Dictate SQL (voice input)"}
+                            className={`absolute right-2 top-2 p-1 rounded transition-colors ${
+                              sqlVoice.listening ? "text-red-400 animate-pulse" : "text-gray-600 hover:text-gray-300"
+                            }`}
+                          >
+                            <SqlMicIcon />
+                          </button>
+                        )}
+                      </div>
                       <button
                         onClick={handleRunSql}
                         disabled={loading || !sqlInput.trim()}
                         className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-medium transition-colors"
                       >
                         {loading ? "Running…" : "Run query"}
+                        <span className="ml-2 text-[10px] text-indigo-300 font-normal">⌘↵</span>
                       </button>
                     </div>
                   )}
@@ -366,27 +418,31 @@ export default function Home() {
                             chartType={chartType}
                             columns={result.columns}
                             rows={result.rows}
-                            x={chartConfig.x}
-                            y={chartConfig.y}
+                            config={chartConfig}
                           />
                         </div>
                       )}
 
                       <ResultsTable result={result} />
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <button
                           onClick={handleSaveQuery}
                           disabled={saved}
-                          className="text-xs px-3 py-1.5 rounded border border-gray-700 hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-40 disabled:cursor-default transition-colors"
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-700 hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-40 disabled:cursor-default transition-colors"
                         >
                           {saved ? "Saved ✓" : "Save query"}
+                          {!saved && <span className="text-[10px] text-gray-600">⌘S</span>}
                         </button>
                         <button
                           onClick={() => setShowSaveToDashboard(true)}
-                          className="text-xs px-3 py-1.5 rounded border border-gray-700 hover:border-indigo-500 hover:text-indigo-400 transition-colors"
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
                         >
-                          Save to Dashboard
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                            <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+                          </svg>
+                          Add to dashboard
                         </button>
                       </div>
                     </div>
@@ -411,6 +467,17 @@ export default function Home() {
         />
       )}
     </main>
+  );
+}
+
+function SqlMicIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
   );
 }
 
