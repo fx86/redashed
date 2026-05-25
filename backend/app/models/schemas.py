@@ -91,6 +91,8 @@ class SaveQueryRequest(BaseModel):
     connection_id: str
     question: str
     sql: str
+    chart_type: str = "table"
+    chart_config: dict = {}
 
 
 class RenameQueryRequest(BaseModel):
@@ -102,6 +104,8 @@ class SavedQueryResponse(BaseModel):
     connection_id: Optional[str]
     question: str
     sql: str
+    chart_type: str = "table"
+    chart_config: dict = {}
     created_at: str
 
 

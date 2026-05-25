@@ -132,6 +132,12 @@ export default function Home() {
             try {
               const res = await runSql(jwt, conn.id, q.sql);
               applyResult(res, q.question);
+              // Restore saved chart config if it exists (overrides auto-selection)
+              if (q.chart_config && q.chart_type && q.chart_type !== "table") {
+                const savedCfg = { ...q.chart_config, type: q.chart_type } as import("@bi-tool/charts").ChartConfig;
+                setChartConfig(savedCfg);
+                setChartType(q.chart_type as import("@bi-tool/charts").ChartType);
+              }
             } catch { /* SQL loaded, user can run manually */ }
           } catch {
             await connectFirst(conns, jwt);
@@ -284,6 +290,8 @@ export default function Home() {
         connection_id: activeConnection.id,
         question: lastQuestion,
         sql: result.sql,
+        chart_type: chartType,
+        chart_config: chartConfig as Record<string, unknown>,
       });
       setSaved(true);
       setIsDirty(false);

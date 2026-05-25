@@ -35,28 +35,38 @@ def _conn():
 
 # ── Saved queries ──────────────────────────────────────────────────────────────
 
-def insert_saved_query(user_id: str, connection_id: str, question: str, sql: str) -> dict:
+def insert_saved_query(
+    user_id: str, connection_id: str, question: str, sql: str,
+    chart_type: str = "table", chart_config: dict | None = None,
+) -> dict:
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                INSERT INTO saved_queries (user_id, connection_id, question, sql)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id, connection_id, question, sql, created_at
+                INSERT INTO saved_queries (user_id, connection_id, question, sql, chart_type, chart_config)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, connection_id, question, sql, chart_type, chart_config, created_at
                 """,
-                (user_id, connection_id, question, sql),
+                (user_id, connection_id, question, sql, chart_type, json.dumps(chart_config or {})),
             )
-            return dict(cur.fetchone())
+            row = dict(cur.fetchone())
+            if isinstance(row.get("chart_config"), str):
+                row["chart_config"] = json.loads(row["chart_config"])
+            return row
 
 
 def list_saved_queries(user_id: str) -> list[dict]:
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, connection_id, question, sql, created_at FROM saved_queries WHERE user_id = %s ORDER BY created_at DESC",
+                "SELECT id, connection_id, question, sql, chart_type, chart_config, created_at FROM saved_queries WHERE user_id = %s ORDER BY created_at DESC",
                 (user_id,),
             )
-            return [dict(r) for r in cur.fetchall()]
+            rows = [dict(r) for r in cur.fetchall()]
+            for row in rows:
+                if isinstance(row.get("chart_config"), str):
+                    row["chart_config"] = json.loads(row["chart_config"])
+            return rows
 
 
 def rename_saved_query(query_id: str, user_id: str, question: str) -> dict | None:
@@ -188,11 +198,11 @@ def remove_dashboard_editor(dashboard_id: str, user_id: str) -> None:
 
 # ── Dashboard tiles ────────────────────────────────────────────────────────────
 
-# All tile reads go through this JOIN — question/sql/connection_id always live in saved_queries
+# chart_type and chart_config are the saved_query's — tiles are display containers only
 _TILE_SELECT = """
     SELECT dt.id, dt.dashboard_id, dt.saved_query_id,
            sq.connection_id, sq.question, sq.sql,
-           dt.chart_type, dt.chart_config, dt.position, dt.layout, dt.created_at
+           sq.chart_type, sq.chart_config, dt.position, dt.layout, dt.created_at
     FROM dashboard_tiles dt
     JOIN saved_queries sq ON sq.id = dt.saved_query_id
 """
@@ -245,12 +255,20 @@ def update_tile_layouts(dashboard_id: str, layouts: list[dict]) -> None:
 def update_tile_config(tile_id: str, dashboard_id: str, chart_type: str, chart_config: dict) -> dict | None:
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Resolve the saved_query_id for this tile
             cur.execute(
-                "UPDATE dashboard_tiles SET chart_type = %s, chart_config = %s WHERE id = %s AND dashboard_id = %s",
-                (chart_type, json.dumps(chart_config), tile_id, dashboard_id),
+                "SELECT saved_query_id FROM dashboard_tiles WHERE id = %s AND dashboard_id = %s",
+                (tile_id, dashboard_id),
             )
-            if cur.rowcount == 0:
+            tile_row = cur.fetchone()
+            if not tile_row:
                 return None
+            saved_query_id = tile_row["saved_query_id"]
+            # Write chart config to saved_queries so all tiles referencing this query see the update
+            cur.execute(
+                "UPDATE saved_queries SET chart_type = %s, chart_config = %s WHERE id = %s",
+                (chart_type, json.dumps(chart_config), saved_query_id),
+            )
             cur.execute(_TILE_SELECT + " WHERE dt.id = %s", (tile_id,))
             row = cur.fetchone()
             return _coerce_tile(dict(row)) if row else None
@@ -275,11 +293,16 @@ def get_saved_query(query_id: str, user_id: str) -> dict | None:
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, connection_id, question, sql, created_at FROM saved_queries WHERE id = %s AND user_id = %s",
+                "SELECT id, connection_id, question, sql, chart_type, chart_config, created_at FROM saved_queries WHERE id = %s AND user_id = %s",
                 (query_id, user_id),
             )
             row = cur.fetchone()
-            return dict(row) if row else None
+            if not row:
+                return None
+            row = dict(row)
+            if isinstance(row.get("chart_config"), str):
+                row["chart_config"] = json.loads(row["chart_config"])
+            return row
 
 
 # ── User connections ────────────────────────────────────────────────────────────

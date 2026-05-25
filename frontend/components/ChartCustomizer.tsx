@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type React from "react";
 import { useThemeRegistry } from "@bi-tool/charts";
 import type { ChartConfig, ThemeSpec } from "@bi-tool/charts";
@@ -96,13 +97,19 @@ export default function ChartCustomizer({ config, columns, onChange }: Props) {
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
       const POPOVER_W = 288; // w-72
-      // Right-align with button, but clamp so popover never overflows the viewport left edge
+      const POPOVER_MAX_H = Math.min(520, window.innerHeight - 80);
       const rawRight = window.innerWidth - rect.right;
       const right = Math.min(
         Math.max(8, rawRight),
         Math.max(8, window.innerWidth - POPOVER_W - 8),
       );
-      setPos({ top: rect.bottom + 4, right });
+      // Flip above button if not enough space below
+      const spaceBelow = window.innerHeight - rect.bottom - 4;
+      const top =
+        spaceBelow >= POPOVER_MAX_H
+          ? rect.bottom + 4
+          : Math.max(8, rect.top - POPOVER_MAX_H - 4);
+      setPos({ top, right });
     }
     setOpen((v) => !v);
   }
@@ -148,8 +155,8 @@ export default function ChartCustomizer({ config, columns, onChange }: Props) {
         <GearIcon />
       </button>
 
-      {/* Fixed popover — renders outside any overflow:hidden container */}
-      {open && (
+      {/* Fixed popover — portalled to body to escape CSS transform stacking context */}
+      {open && typeof document !== "undefined" && createPortal(
         <div
           ref={popoverRef}
           className="fixed z-[200] w-72 max-w-[calc(100vw-16px)] bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-y-auto"
@@ -261,7 +268,8 @@ export default function ChartCustomizer({ config, columns, onChange }: Props) {
               </div>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

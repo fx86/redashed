@@ -38,8 +38,14 @@ export default function SaveToDashboard({
     setLoading(true);
     setError(null);
     try {
-      // Always save the query first — tile must reference a saved_query_id
-      const saved = await saveQuery(jwt, { connection_id: connectionId, question, sql });
+      // Save query with chart config — tile reads chart config from saved_query
+      const saved = await saveQuery(jwt, {
+        connection_id: connectionId,
+        question,
+        sql,
+        chart_type: chartType,
+        chart_config: chartConfig as Record<string, unknown>,
+      });
       await createDashboardTile(jwt, dashboardId, {
         saved_query_id: saved.id,
         chart_type: chartType,

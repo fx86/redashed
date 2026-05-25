@@ -56,6 +56,8 @@ export interface SavedQuery {
   connection_id: string | null;
   question: string;
   sql: string;
+  chart_type: string;
+  chart_config: Record<string, unknown>;
   created_at: string;
 }
 
@@ -126,7 +128,7 @@ export async function runSavedConnectionQuery(
 
 export async function saveQuery(
   jwt: string,
-  body: { connection_id: string; question: string; sql: string }
+  body: { connection_id: string; question: string; sql: string; chart_type?: string; chart_config?: Record<string, unknown> }
 ): Promise<SavedQuery> {
   const res = await fetch(`${BASE}/saved-queries`, {
     method: "POST",

@@ -13,6 +13,8 @@ def save_query(body: SaveQueryRequest, user=Depends(get_current_user)):
         connection_id=body.connection_id,
         question=body.question,
         sql=body.sql,
+        chart_type=body.chart_type,
+        chart_config=body.chart_config,
     )
     return _to_response(row)
 
@@ -52,5 +54,7 @@ def _to_response(row: dict) -> SavedQueryResponse:
         connection_id=row.get("connection_id"),
         question=row["question"],
         sql=row["sql"],
+        chart_type=row.get("chart_type", "table"),
+        chart_config=row.get("chart_config") or {},
         created_at=str(row["created_at"]),
     )

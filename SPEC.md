@@ -59,11 +59,15 @@
 
 > Prototype reference: "Dashboards" tab → Space Ops dashboard
 
-### 3.1 Dashboard List
-- [ ] List of all dashboards user has access to
-- [ ] Create new dashboard (name only to start, widgets added after)
-- [ ] Favourite/star a dashboard
-- [ ] Delete dashboard (confirm modal)
+### 3.1 Dashboard List Page
+- [ ] Dedicated `/dashboards` route — full-page card grid of all dashboards the user owns or has been shared
+- [ ] Each card shows: dashboard name, tile count, last updated, owner avatar (if shared to current user)
+- [ ] Clicking a card opens the dashboard in full-page view (no sidebar, no nav chrome — focus mode)
+- [ ] Dashboard full-page view will incorporate filter bar in future (§3.6); layout must reserve space for it
+- [ ] Create new dashboard button — name-only modal to start, tiles added after creation
+- [ ] Favourite/star a dashboard (starred dashboards appear at top of list)
+- [ ] Delete dashboard — confirm modal; owner only
+- [ ] Empty state: prompt to create first dashboard or connect a data source
 
 ### 3.2 Dashboard View
 - [ ] Dashboard title — inline editable (click to edit)
@@ -79,6 +83,15 @@
 - [x] Resize widget (drag handle) — creator/editors only; layout changes persisted
 - [x] Remove widget from dashboard — creator/editors only
 - [ ] Click widget → opens source query in editor
+- [ ] **Chart type selection lives in the query editor, not the dashboard tile.** Dashboard tiles display the chart type chosen at query save time. Changing chart type requires going back to the query editor. The tile shows no chart-type switcher UI — just the chart, title, and a context menu with "Edit query" and "Remove". (Deviation from current implementation — current build has chart switcher on each tile, which is noisy.)
+
+### 3.6 Dashboard Filters
+- [ ] Dashboard-level filter bar above the tile grid
+- [ ] Users can add filters from any column used in the dashboard's queries
+- [ ] Filter type auto-detected from column data type: date range picker (date/timestamp), dropdown (low-cardinality text), text search (high-cardinality text), numeric range (number)
+- [ ] Filters applied client-side where possible; for server-side filtering, re-run the query with a WHERE clause injected
+- [ ] Filter state preserved in URL (shareable filtered dashboard links)
+- [ ] "Clear all filters" button
 
 ### 3.5 Dashboard Permissions
 - [x] Creator owns the dashboard; only they can change chart type, resize tiles, delete tiles/dashboard
@@ -140,10 +153,19 @@
 - [ ] Paginated display (show first 500 rows, load more on scroll)
 - [ ] Results view toggle: Table | Chart
 - [ ] Chart view uses `@bi-tool/charts` — auto-selects type from result shape
-- [ ] Chart type override pill (bar / line / scatter / area / table)
+- [ ] **Chart type selector lives here (query editor), not on the dashboard tile.** Selection is persisted with the saved query. This is the only place to change chart type.
 - [ ] Export CSV button
 - [ ] "Add to dashboard" button → dashboard picker modal
 - [ ] Error state: show warehouse error message inline, SQL editor stays editable
+
+### 4.7 Query Chaining (Multiple Charts from One Query)
+- [ ] After a query runs, user can create multiple "views" of the same result — each with a different chart type and column mapping
+- [ ] Each view is a named chart (e.g. "Revenue by Month — Line", "Revenue by Month — Bar")
+- [ ] All views share one underlying query execution result; re-running updates all
+- [ ] Each view can be independently added to a dashboard as a separate tile
+- [ ] Views listed in a tabbed or card layout below the results pane
+- [ ] "Add view" button clones the current chart config as a starting point
+- [ ] Views are persisted alongside the saved query; no separate query object created
 
 ### 4.6 Query Persistence
 - [ ] Unsaved changes indicator (dot on Save button)
@@ -198,7 +220,20 @@
 
 ---
 
-## 7. Alerts
+## 7. Data Upload
+- [ ] User can upload CSV or Excel files directly in the UI
+- [ ] Uploaded file is parsed client-side to preview columns + first 10 rows before import
+- [ ] On confirm, file is loaded into a temporary queryable table scoped to the user's session (DuckDB in-process or a named schema in the user's connected warehouse)
+- [ ] Uploaded table appears in the schema sidebar alongside warehouse tables, with an "uploaded" badge
+- [ ] User can query uploaded data with SQL just like any other table
+- [ ] Uploaded data can be joined with warehouse tables in the same query
+- [ ] Files auto-expire after 7 days (configurable) with a warning banner before expiry
+- [ ] Upload size limit: 50MB initially
+- [ ] Supported types: CSV, TSV, XLSX, JSON (newline-delimited)
+
+---
+
+## 8. Alerts
 - [ ] Alert on: query result row count, specific column value threshold, query failure
 - [ ] Notification channels: email (start here), Slack (future)
 - [ ] Alert list with status: active / paused / firing
@@ -212,6 +247,14 @@
 - [ ] Connections: manage all warehouse connections
 - [ ] API keys: generate personal access tokens (for future API access)
 - [ ] Danger zone: delete account
+
+### 8.1 AI Provider Keys
+- [ ] User can add their own AI provider API key (OpenAI, OpenRouter, Anthropic, etc.)
+- [ ] Key stored encrypted at rest — never logged or exposed to frontend
+- [ ] Provider picker dropdown: OpenAI · OpenRouter · Anthropic · DeepSeek (default)
+- [ ] Key tested on save (ping the provider's models endpoint)
+- [ ] Per-user key takes priority over platform default; fallback to platform key if user has none
+- [ ] Model selector per provider (e.g. GPT-4o, claude-3-5-sonnet, deepseek-chat)
 
 ---
 
