@@ -69,6 +69,30 @@ def list_saved_queries(user_id: str) -> list[dict]:
             return rows
 
 
+def update_saved_query(
+    query_id: str, user_id: str, question: str, sql: str,
+    chart_type: str = "table", chart_config: dict | None = None,
+) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE saved_queries
+                SET question = %s, sql = %s, chart_type = %s, chart_config = %s
+                WHERE id = %s AND user_id = %s
+                RETURNING id, connection_id, question, sql, chart_type, chart_config, created_at
+                """,
+                (question, sql, chart_type, json.dumps(chart_config or {}), query_id, user_id),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            row = dict(row)
+            if isinstance(row.get("chart_config"), str):
+                row["chart_config"] = json.loads(row["chart_config"])
+            return row
+
+
 def rename_saved_query(query_id: str, user_id: str, question: str) -> dict | None:
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

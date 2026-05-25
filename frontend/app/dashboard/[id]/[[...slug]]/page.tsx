@@ -50,6 +50,13 @@ export default function DashboardViewPage() {
   const [editorLoading, setEditorLoading] = useState(false);
 
   const { width: containerWidth, containerRef } = useContainerWidth({ initialWidth: 900 });
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth < 768); }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashboardRef = useRef<Dashboard | null>(null);
   dashboardRef.current = dashboard;
@@ -275,12 +282,63 @@ export default function DashboardViewPage() {
 
         {tiles.length > 0 && (
           <div ref={containerRef}>
-            <ResponsiveGridLayout
+            {/* Mobile: simple stacked list */}
+            {isMobile && (
+              <div className="flex flex-col gap-2">
+                {[...tiles]
+                  .sort((a, b) => {
+                    const ay = a.layout?.y ?? 0, by = b.layout?.y ?? 0;
+                    return ay !== by ? ay - by : (a.layout?.x ?? 0) - (b.layout?.x ?? 0);
+                  })
+                  .map((tile) => {
+                    const res = results[tile.id];
+                    const config = chartConfigs[tile.id] ?? { type: "table" };
+                    const ct = config.type as ChartType;
+                    const isLoading = tileLoading[tile.id];
+                    const error = tileErrors[tile.id];
+                    const tileH = (tile.layout?.h ?? 4) * 100 + 8;
+                    return (
+                      <div
+                        key={tile.id}
+                        className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col"
+                        style={{ height: tileH }}
+                      >
+                        <div className="px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2">
+                          <p className="text-sm text-gray-100 font-medium leading-snug truncate flex-1">{tile.question}</p>
+                          <a href={`/?query_id=${tile.saved_query_id}`} className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </a>
+                        </div>
+                        <div className="flex-1 overflow-auto p-2 min-h-0">
+                          {isLoading && <div className="flex flex-col gap-2 h-full justify-center px-2"><div className="h-2 bg-gray-800 rounded animate-pulse w-3/4" /><div className="h-2 bg-gray-800 rounded animate-pulse w-1/2" /></div>}
+                          {!isLoading && error && <p className="text-xs text-red-400 p-2">{error}</p>}
+                          {!isLoading && res && ct !== "table" && (
+                            <div className="h-full overflow-hidden rounded">
+                              <ChartView chartType={ct} columns={res.columns} rows={res.rows} config={config} />
+                            </div>
+                          )}
+                          {!isLoading && res && ct === "table" && (
+                            <table className="text-xs w-full"><thead><tr>{res.columns.map((c) => <th key={c} className="text-left text-gray-500 pb-1 pr-3 font-medium whitespace-nowrap">{c}</th>)}</tr></thead>
+                              <tbody>{res.rows.slice(0, 20).map((row, i) => <tr key={i} className="border-t border-gray-800">{(row as unknown[]).map((cell, j) => <td key={j} className="py-1 pr-3 text-gray-300 whitespace-nowrap">{String(cell ?? "")}</td>)}</tr>)}</tbody>
+                            </table>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Desktop: draggable/resizable grid */}
+            {!isMobile && <ResponsiveGridLayout
               className="layout"
               width={containerWidth}
-              layouts={{ lg: gridLayout, md: gridLayout, sm: gridLayout }}
-              breakpoints={{ lg: 1200, md: 768, sm: 480 }}
-              cols={{ lg: 12, md: 10, sm: 6 }}
+              layouts={{ lg: gridLayout, md: gridLayout }}
+              breakpoints={{ lg: 1200, md: 0 }}
+              cols={{ lg: 12, md: 12 }}
               rowHeight={100}
               margin={[8, 8] as const}
               dragConfig={{ enabled: canEdit, handle: ".drag-handle" }}
@@ -385,7 +443,7 @@ export default function DashboardViewPage() {
                   </div>
                 );
               })}
-            </ResponsiveGridLayout>
+            </ResponsiveGridLayout>}
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ import {
   runSavedConnectionQuery,
   runSql,
   saveQuery,
+  updateSavedQuery,
   getSavedQuery,
   listAnnotations,
   upsertAnnotation,
@@ -68,6 +69,7 @@ export default function Home() {
   const [showSaveToDashboard, setShowSaveToDashboard] = useState(false);
   const [queryMode, setQueryMode] = useState<QueryMode>("ai");
   const [sqlInput, setSqlInput] = useState("");
+  const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
 
   const registry = useRegistry();
   const jwt = session?.access_token ?? "";
@@ -134,6 +136,7 @@ export default function Home() {
             try {
               const res = await runSql(jwt, conn.id, q.sql);
               applyResult(res, q.question);
+              setCurrentQueryId(q.id);
               // Restore saved chart config if it exists (overrides auto-selection)
               if (q.chart_config && q.chart_type && q.chart_type !== "table") {
                 const savedCfg = { ...q.chart_config, type: q.chart_type } as import("@bi-tool/charts").ChartConfig;
@@ -244,6 +247,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     setSaved(false);
+    setCurrentQueryId(null);
     setLastQuestion(question);
     try {
       const res = await runSavedConnectionQuery(jwt, activeConnection.id, question);
@@ -261,6 +265,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     setSaved(false);
+    setCurrentQueryId(null);
     setLastQuestion(sqlInput);
     try {
       const res = await runSql(jwt, activeConnection.id, sqlInput);
@@ -287,14 +292,18 @@ export default function Home() {
 
   async function handleSaveQuery() {
     if (!result || !activeConnection) return;
+    const body = {
+      connection_id: activeConnection.id,
+      question: lastQuestion,
+      sql: result.sql,
+      chart_type: chartType,
+      chart_config: chartConfig as Record<string, unknown>,
+    };
     try {
-      await saveQuery(jwt, {
-        connection_id: activeConnection.id,
-        question: lastQuestion,
-        sql: result.sql,
-        chart_type: chartType,
-        chart_config: chartConfig as Record<string, unknown>,
-      });
+      const saved = currentQueryId
+        ? await updateSavedQuery(jwt, currentQueryId, body)
+        : await saveQuery(jwt, body);
+      setCurrentQueryId(saved.id);
       setSaved(true);
       setIsDirty(false);
       clearDraft();
@@ -330,6 +339,7 @@ export default function Home() {
     setChartConfig({ type: "table" });
     setShowSaveToDashboard(false);
     setIsDirty(false);
+    setCurrentQueryId(null);
   }
 
   if (authLoading || initializing) {

@@ -33,6 +33,21 @@ def get_saved_query(query_id: str, user=Depends(get_current_user)):
     return _to_response(row)
 
 
+@router.put("/{query_id}", response_model=SavedQueryResponse)
+def update_saved_query(query_id: str, body: SaveQueryRequest, user=Depends(get_current_user)):
+    row = local_db_service.update_saved_query(
+        query_id=query_id,
+        user_id=user["user_id"],
+        question=body.question,
+        sql=body.sql,
+        chart_type=body.chart_type,
+        chart_config=body.chart_config,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Query not found")
+    return _to_response(row)
+
+
 @router.patch("/{query_id}", response_model=SavedQueryResponse)
 def rename_saved_query(query_id: str, body: RenameQueryRequest, user=Depends(get_current_user)):
     if not body.question.strip():

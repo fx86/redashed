@@ -138,6 +138,19 @@ export async function saveQuery(
   return handleResponse<SavedQuery>(res);
 }
 
+export async function updateSavedQuery(
+  jwt: string,
+  queryId: string,
+  body: { connection_id: string; question: string; sql: string; chart_type?: string; chart_config?: Record<string, unknown> }
+): Promise<SavedQuery> {
+  const res = await fetch(`${BASE}/saved-queries/${queryId}`, {
+    method: "PUT",
+    headers: authHeaders(jwt),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<SavedQuery>(res);
+}
+
 export async function listSavedQueries(jwt: string): Promise<SavedQuery[]> {
   const res = await fetch(`${BASE}/saved-queries`, { headers: authHeaders(jwt) });
   return handleResponse<SavedQuery[]>(res);
