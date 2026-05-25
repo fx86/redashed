@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Plot from "@observablehq/plot";
 import type { ChartProps, ChartDefinition } from "../registry";
 import { inferKind } from "../utils/infer";
@@ -9,9 +9,19 @@ import { fmt } from "../utils/fmt";
 export function ScatterPlot({ data, config, theme }: ChartProps) {
   const { x = "", y = "" } = config;
   const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x || !y) return;
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(el);
+    setWidth(el.offsetWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!ref.current || !data.length || !x || !y || !width) return;
 
     const xs = data.map((d) => d[x] as number);
     const ys = data.map((d) => d[y] as number);
@@ -27,7 +37,7 @@ export function ScatterPlot({ data, config, theme }: ChartProps) {
       marginRight: 24,
       marginBottom: 32,
       marginLeft: 48,
-      width: ref.current.offsetWidth || 600,
+      width,
       marks: [
         Plot.dot(data, {
           x,
@@ -62,7 +72,7 @@ export function ScatterPlot({ data, config, theme }: ChartProps) {
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, y, theme]);
+  }, [data, x, y, theme, width]);
 
   return <div ref={ref} className="w-full" />;
 }

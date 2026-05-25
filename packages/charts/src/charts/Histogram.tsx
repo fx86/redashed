@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Plot from "@observablehq/plot";
 import type { ChartProps, ChartDefinition, ChartBaseConfig } from "../registry";
 import { inferKind } from "../utils/infer";
@@ -13,9 +13,19 @@ export interface HistogramConfig extends ChartBaseConfig {
 export function Histogram({ data, config, theme }: ChartProps<HistogramConfig>) {
   const { x = "", thresholds = 20 } = config;
   const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x) return;
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(el);
+    setWidth(el.offsetWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!ref.current || !data.length || !x || !width) return;
 
     const mode = theme.highlightMode ?? "max";
     const fillColor = mode === "uniform" ? theme.ink : theme.muted;
@@ -25,7 +35,7 @@ export function Histogram({ data, config, theme }: ChartProps<HistogramConfig>) 
       marginRight: 24,
       marginBottom: 32,
       marginLeft: 48,
-      width: ref.current.offsetWidth || 600,
+      width,
       marks: [
         Plot.rectY(data, {
           ...Plot.binX({ y: "count" }, { x, thresholds }),
@@ -46,7 +56,7 @@ export function Histogram({ data, config, theme }: ChartProps<HistogramConfig>) 
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, thresholds, theme]);
+  }, [data, x, thresholds, theme, width]);
 
   return <div ref={ref} className="w-full" />;
 }

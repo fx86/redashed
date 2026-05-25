@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Plot from "@observablehq/plot";
 import type { ChartProps, ChartDefinition, ChartBaseConfig } from "../registry";
 import { inferKind } from "../utils/infer";
@@ -13,9 +13,19 @@ export interface HeatmapConfig extends ChartBaseConfig {
 export function Heatmap({ data, config, theme }: ChartProps<HeatmapConfig>) {
   const { x = "", y = "", fill = "" } = config;
   const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x || !y || !fill) return;
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(el);
+    setWidth(el.offsetWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!ref.current || !data.length || !x || !y || !fill || !width) return;
 
     const vals = data.map((d) => d[fill] as number);
     const max = Math.max(...vals);
@@ -25,7 +35,7 @@ export function Heatmap({ data, config, theme }: ChartProps<HeatmapConfig>) {
       marginRight: 24,
       marginBottom: 48,
       marginLeft: 80,
-      width: ref.current.offsetWidth || 600,
+      width,
       color: {
         type: "linear",
         domain: [0, max],
@@ -58,7 +68,7 @@ export function Heatmap({ data, config, theme }: ChartProps<HeatmapConfig>) {
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, y, fill, theme]);
+  }, [data, x, y, fill, theme, width]);
 
   return <div ref={ref} className="w-full" />;
 }
