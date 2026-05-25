@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import AuthForm from "@/components/AuthForm";
 import {
   listUserConnections,
   createUserConnection,
@@ -48,7 +50,8 @@ function clearDraft() {
 }
 
 export default function Home() {
-  const { user, session, loading: authLoading, signInWithGoogle } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   const [step, setStep] = useState<AppStep>("connections");
   const [connections, setConnections] = useState<SavedConnection[]>([]);
@@ -114,7 +117,11 @@ export default function Home() {
     listUserConnections(jwt)
       .then(async (conns) => {
         setConnections(conns);
-        if (conns.length === 0) return;
+        if (conns.length === 0) {
+          const done = typeof window !== "undefined" && localStorage.getItem("onboarding_done");
+          if (!done) { router.replace("/onboarding"); return; }
+          return;
+        }
 
         if (queryId) {
           try {
@@ -361,23 +368,7 @@ export default function Home() {
           backgroundSize: "32px 32px",
         }}
       >
-        <div className="bg-gray-900/80 border border-gray-700/60 rounded-2xl p-8 w-full max-w-xs shadow-2xl backdrop-blur-sm space-y-6">
-          <div className="space-y-2">
-            <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center text-white text-base font-semibold">Q</div>
-            <h1 className="text-xl font-semibold text-gray-100 tracking-tight">Querywise</h1>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              AI-powered queries on your own data warehouse.
-            </p>
-          </div>
-          <button
-            onClick={signInWithGoogle}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 hover:border-gray-600 hover:bg-gray-750 text-gray-200 font-medium text-sm transition-colors"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-          <p className="text-[11px] text-gray-700 text-center">No credit card required</p>
-        </div>
+        <AuthForm />
       </main>
     );
   }
@@ -665,13 +656,3 @@ function SqlMicIcon() {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" />
-      <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z" />
-      <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z" />
-      <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z" />
-    </svg>
-  );
-}
