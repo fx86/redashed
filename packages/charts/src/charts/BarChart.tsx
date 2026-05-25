@@ -10,18 +10,23 @@ export function BarChart({ data, config, theme }: ChartProps) {
   const { x = "", y = "" } = config;
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const ro = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width);
+      setHeight(entry.contentRect.height);
+    });
     ro.observe(el);
     setWidth(el.offsetWidth);
+    setHeight(el.offsetHeight);
     return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x || !y || !width) return;
+    if (!ref.current || !data.length || !x || !y || !width || !height) return;
 
     const sorted = [...data].sort((a, b) => (b[y] as number) - (a[y] as number));
     const max = Math.max(...sorted.map((d) => d[y] as number));
@@ -40,6 +45,7 @@ export function BarChart({ data, config, theme }: ChartProps) {
       marginTop: 8,
       marginBottom: 8,
       width,
+      height,
       marks: [
         Plot.ruleX([0], { stroke: theme.axis, strokeWidth: 0.5 }),
         Plot.barX(sorted, { y: x, x: y, fill: barFill }),
@@ -65,9 +71,9 @@ export function BarChart({ data, config, theme }: ChartProps) {
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, y, theme, width]);
+  }, [data, x, y, theme, width, height]);
 
-  return <div ref={ref} className="w-full" />;
+  return <div ref={ref} className="w-full h-full" />;
 }
 
 export const barDefinition: ChartDefinition = {

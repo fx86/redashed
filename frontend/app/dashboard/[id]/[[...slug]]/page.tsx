@@ -49,7 +49,7 @@ export default function DashboardViewPage() {
   const [newEditorId, setNewEditorId] = useState("");
   const [editorLoading, setEditorLoading] = useState(false);
 
-  const { width: containerWidth, containerRef } = useContainerWidth({ initialWidth: 900 });
+  const { width: containerWidth, containerRef, measureWidth } = useContainerWidth({ initialWidth: 900 });
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     function check() { setIsMobile(window.innerWidth < 768); }
@@ -62,6 +62,11 @@ export default function DashboardViewPage() {
   dashboardRef.current = dashboard;
 
   useEffect(() => { setMounted(true); }, []);
+
+  // containerRef mounts after pageLoading=false; re-measure once it's in the DOM
+  useEffect(() => {
+    if (!pageLoading) measureWidth();
+  }, [pageLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mounted && !authLoading && !user) router.replace("/");
@@ -271,6 +276,7 @@ export default function DashboardViewPage() {
 
       {/* Tile grid */}
       <div className="flex-1 p-4 max-w-[1080px] mx-auto w-full">
+        <div ref={containerRef}>
         {tiles.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
             <p className="text-gray-600 text-sm">No tiles in this dashboard yet.</p>
@@ -281,7 +287,7 @@ export default function DashboardViewPage() {
         )}
 
         {tiles.length > 0 && (
-          <div ref={containerRef}>
+          <div>
             {/* Mobile: simple stacked list */}
             {isMobile && (
               <div className="flex flex-col gap-2">
@@ -446,6 +452,7 @@ export default function DashboardViewPage() {
             </ResponsiveGridLayout>}
           </div>
         )}
+        </div>
       </div>
 
       {/* Share modal */}

@@ -14,18 +14,23 @@ export function Heatmap({ data, config, theme }: ChartProps<HeatmapConfig>) {
   const { x = "", y = "", fill = "" } = config;
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const ro = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width);
+      setHeight(entry.contentRect.height);
+    });
     ro.observe(el);
     setWidth(el.offsetWidth);
+    setHeight(el.offsetHeight);
     return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x || !y || !fill || !width) return;
+    if (!ref.current || !data.length || !x || !y || !fill || !width || !height) return;
 
     const vals = data.map((d) => d[fill] as number);
     const max = Math.max(...vals);
@@ -36,6 +41,7 @@ export function Heatmap({ data, config, theme }: ChartProps<HeatmapConfig>) {
       marginBottom: 48,
       marginLeft: 80,
       width,
+      height,
       color: {
         type: "linear",
         domain: [0, max],
@@ -68,9 +74,9 @@ export function Heatmap({ data, config, theme }: ChartProps<HeatmapConfig>) {
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, y, fill, theme, width]);
+  }, [data, x, y, fill, theme, width, height]);
 
-  return <div ref={ref} className="w-full" />;
+  return <div ref={ref} className="w-full h-full" />;
 }
 
 export const heatmapDefinition: ChartDefinition<HeatmapConfig> = {

@@ -14,18 +14,23 @@ export function Histogram({ data, config, theme }: ChartProps<HistogramConfig>) 
   const { x = "", thresholds = 20 } = config;
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const ro = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width);
+      setHeight(entry.contentRect.height);
+    });
     ro.observe(el);
     setWidth(el.offsetWidth);
+    setHeight(el.offsetHeight);
     return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x || !width) return;
+    if (!ref.current || !data.length || !x || !width || !height) return;
 
     const mode = theme.highlightMode ?? "max";
     const fillColor = mode === "uniform" ? theme.ink : theme.muted;
@@ -36,6 +41,7 @@ export function Histogram({ data, config, theme }: ChartProps<HistogramConfig>) 
       marginBottom: 32,
       marginLeft: 48,
       width,
+      height,
       marks: [
         Plot.rectY(data, {
           ...Plot.binX({ y: "count" }, { x, thresholds }),
@@ -56,9 +62,9 @@ export function Histogram({ data, config, theme }: ChartProps<HistogramConfig>) 
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, thresholds, theme, width]);
+  }, [data, x, thresholds, theme, width, height]);
 
-  return <div ref={ref} className="w-full" />;
+  return <div ref={ref} className="w-full h-full" />;
 }
 
 export const histogramDefinition: ChartDefinition<HistogramConfig> = {

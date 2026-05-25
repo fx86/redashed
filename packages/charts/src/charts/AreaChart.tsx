@@ -10,18 +10,23 @@ export function AreaChart({ data, config, theme }: ChartProps) {
   const { x = "", y = "" } = config;
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const ro = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width);
+      setHeight(entry.contentRect.height);
+    });
     ro.observe(el);
     setWidth(el.offsetWidth);
+    setHeight(el.offsetHeight);
     return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!ref.current || !data.length || !x || !y || !width) return;
+    if (!ref.current || !data.length || !x || !y || !width || !height) return;
 
     const coerced = data.map((d) => ({ ...d, [x]: new Date(d[x] as string) }));
     const vals = coerced.map((d) => d[y] as number);
@@ -31,9 +36,10 @@ export function AreaChart({ data, config, theme }: ChartProps) {
     const plot = Plot.plot({
       marginTop: 16,
       marginRight: 24,
-      marginBottom: 24,
+      marginBottom: 36,
       marginLeft: 48,
       width,
+      height,
       marks: [
         Plot.areaY(coerced, {
           x,
@@ -66,9 +72,9 @@ export function AreaChart({ data, config, theme }: ChartProps) {
 
     ref.current.appendChild(plot);
     return () => plot.remove();
-  }, [data, x, y, theme, width]);
+  }, [data, x, y, theme, width, height]);
 
-  return <div ref={ref} className="w-full" />;
+  return <div ref={ref} className="w-full h-full" />;
 }
 
 export const areaDefinition: ChartDefinition = {
