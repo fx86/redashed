@@ -1,45 +1,57 @@
-export type ChartType = "bar" | "line" | "scatter" | "table";
+import type { ChartRegistry } from "../registry";
+
+export type ChartType = string;
 
 export interface ChartConfig {
   type: ChartType;
+  // Common axis columns
   x?: string;
   y?: string;
+  // Heatmap colour column
+  fill?: string;
+  // KPI metric + comparison
+  value?: string;
+  delta?: string;
+  // Histogram bin count
+  thresholds?: number;
+  // Pivot dimensions
+  rows?: string[];
+  col?: string;
+  conditionalFormat?: string;
+  showTotals?: boolean;
+  showPct?: boolean;
+  /** Key in the ThemeRegistry. Falls back to context default if absent or unregistered. */
+  themeName?: string;
+  /** Overrides the theme's highlightMode for this chart only. */
+  highlightMode?: string;
+  /** Allows arbitrary extra keys so ChartConfig is assignable to Record<string, unknown>. */
+  [key: string]: unknown;
 }
 
-type ColKind = "date" | "number" | "string" | "unknown";
-
-function inferKind(values: unknown[]): ColKind {
-  const sample = values.find((v) => v != null);
-  if (sample == null) return "unknown";
-  if (typeof sample === "number") return "number";
-  if (typeof sample === "string" && /^\d{4}-\d{2}-\d{2}/.test(sample))
-    return "date";
-  return "string";
-}
-
+/**
+ * Selects the best chart type for the given data.
+ *
+ * Each registered chart's suitability() score is evaluated and the highest
+ * scorer above 0.3 wins. Its deriveConfig() then produces the x/y config.
+ * User-registered charts participate in auto-selection automatically.
+ *
+ * Falls back to "table" when no chart scores above 0.3.
+ */
 export function selectChartType(
   columns: string[],
-  rows: Record<string, unknown>[]
+  rows: Record<string, unknown>[],
+  registry: ChartRegistry,
 ): ChartConfig {
   if (!columns.length || !rows.length) return { type: "table" };
 
-  const kinds = columns.map((col) => ({
-    name: col,
-    kind: inferKind(rows.map((r) => r[col])),
-  }));
+  const scored = registry
+    .all()
+    .map((def) => ({ def, score: def.suitability(columns, rows) }))
+    .sort((a, b) => b.score - a.score);
 
-  const dates = kinds.filter((c) => c.kind === "date");
-  const nums = kinds.filter((c) => c.kind === "number");
-  const strs = kinds.filter((c) => c.kind === "string");
+  const best = scored[0];
+  if (!best || best.score <= 0.3) return { type: "table" };
 
-  if (dates.length >= 1 && nums.length >= 1)
-    return { type: "line", x: dates[0].name, y: nums[0].name };
-
-  if (strs.length >= 1 && nums.length >= 1 && rows.length <= 100)
-    return { type: "bar", x: strs[0].name, y: nums[0].name };
-
-  if (nums.length >= 2)
-    return { type: "scatter", x: nums[0].name, y: nums[1].name };
-
-  return { type: "table" };
+  const derived = best.def.deriveConfig(columns, rows);
+  return { type: best.def.type, ...derived };
 }

@@ -119,110 +119,106 @@ export default function QueriesPage() {
       <Nav />
 
       {/* Subbar */}
-      <div className="flex items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 gap-3">
-        <h1 className="text-base font-semibold text-gray-100">All Queries</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 flex-shrink-0">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              className="bg-transparent border-none outline-none text-gray-100 text-xs w-40 placeholder:text-gray-600"
-              placeholder="Search queries…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      <div className="bg-gray-900 border-b border-gray-800">
+        <div className="max-w-[1080px] mx-auto flex items-center px-4 py-2.5 gap-3">
+          <h1 className="text-sm font-semibold text-gray-100">All Queries</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 flex-shrink-0">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                className="bg-transparent border-none outline-none text-gray-100 text-xs w-32 sm:w-40 placeholder:text-gray-600"
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
-          <a href="/" className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors">
-            + New query
-          </a>
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-xs">
-          <colgroup>
-            <col style={{ width: 36 }} />
-            <col style={{ width: 320 }} />
-            <col style={{ width: 160 }} />
-            <col style={{ width: 120 }} />
-            <col />
-          </colgroup>
-          <thead>
-            <tr>
-              <th className="bg-gray-800 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-700 uppercase tracking-wide" />
-              <th className="bg-gray-800 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-700 uppercase tracking-wide">Name</th>
-              <th className="bg-gray-800 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-700 uppercase tracking-wide">Source</th>
-              <th className="bg-gray-800 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-700 uppercase tracking-wide">Saved</th>
-              <th className="bg-gray-800 px-4 py-2 border-b border-gray-700" />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
+      <div className="max-w-[1080px] mx-auto">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <colgroup>
+              <col />
+              <col className="hidden sm:table-column" style={{ width: 160 }} />
+              <col className="hidden sm:table-column" style={{ width: 100 }} />
+              <col style={{ width: 90 }} />
+            </colgroup>
+            <thead>
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-600">
-                  {search ? "No queries match your search." : "No saved queries yet. Run a query and save it."}
-                </td>
+                <th className="bg-gray-800/60 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-800 uppercase tracking-wide">Name</th>
+                <th className="hidden sm:table-cell bg-gray-800/60 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-800 uppercase tracking-wide">Source</th>
+                <th className="hidden sm:table-cell bg-gray-800/60 px-4 py-2 text-left text-[10px] font-medium text-gray-500 border-b border-gray-800 uppercase tracking-wide">Saved</th>
+                <th className="bg-gray-800/60 px-4 py-2 border-b border-gray-800" />
               </tr>
-            )}
-            {filtered.map((q) => (
-              <tr
-                key={q.id}
-                className="group cursor-pointer hover:bg-gray-900 border-b border-gray-800/60"
-                onClick={() => router.push(`/?query_id=${q.id}`)}
-              >
-                <td className="px-4 py-2 text-center">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 mx-auto">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                </td>
-                <td className="px-4 py-2 max-w-xs" onClick={(e) => e.stopPropagation()}>
-                  {editingId === q.id ? (
-                    <input
-                      ref={editInputRef}
-                      className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-0.5 text-gray-100 text-xs font-medium outline-none"
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => commitEdit(q.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") { e.currentTarget.blur(); }
-                        if (e.key === "Escape") { setEditingId(null); }
-                      }}
-                    />
-                  ) : (
-                    <span
-                      className="text-sm text-gray-100 font-medium truncate block cursor-text hover:text-white"
-                      onDoubleClick={() => startEdit(q)}
-                      title="Double-click to rename"
-                    >
-                      {q.question}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-2 text-gray-400 whitespace-nowrap">{connName(q.connection_id)}</td>
-                <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{relativeTime(q.created_at)}</td>
-                <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openAddModal(q); }}
-                      className="text-gray-500 hover:text-indigo-400 transition-colors text-[11px] font-medium whitespace-nowrap"
-                    >
-                      + Dashboard
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
-                      className="text-gray-700 hover:text-red-400 transition-colors px-1"
-                      aria-label="Delete query"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-12 text-center text-gray-600">
+                    {search ? "No queries match your search." : (
+                      <span>No saved queries yet.{" "}<a href="/" className="text-indigo-400 hover:text-indigo-300">Run one →</a></span>
+                    )}
+                  </td>
+                </tr>
+              )}
+              {filtered.map((q) => (
+                <tr
+                  key={q.id}
+                  className="group cursor-pointer hover:bg-gray-900/60 border-b border-gray-800/60"
+                  onClick={() => router.push(`/?query_id=${q.id}`)}
+                >
+                  <td className="px-4 py-2.5 min-w-0" onClick={(e) => e.stopPropagation()}>
+                    {editingId === q.id ? (
+                      <input
+                        ref={editInputRef}
+                        className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-0.5 text-gray-100 text-xs font-medium outline-none"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onBlur={() => commitEdit(q.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.currentTarget.blur(); }
+                          if (e.key === "Escape") { setEditingId(null); }
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className="text-sm text-gray-100 font-medium truncate block cursor-text hover:text-white"
+                        onDoubleClick={() => startEdit(q)}
+                        title="Double-click to rename"
+                      >
+                        {q.question}
+                      </span>
+                    )}
+                  </td>
+                  <td className="hidden sm:table-cell px-4 py-2.5 text-gray-400 whitespace-nowrap">{connName(q.connection_id)}</td>
+                  <td className="hidden sm:table-cell px-4 py-2.5 text-gray-500 whitespace-nowrap">{relativeTime(q.created_at)}</td>
+                  <td className="px-4 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openAddModal(q); }}
+                        className="text-gray-500 hover:text-indigo-400 transition-colors text-[11px] font-medium whitespace-nowrap"
+                      >
+                        + Dashboard
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
+                        className="text-gray-700 hover:text-red-400 transition-colors px-1"
+                        aria-label="Delete query"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Add-to-dashboard modal */}
@@ -232,7 +228,7 @@ export default function QueriesPage() {
           onClick={() => setAddTarget(null)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm p-6 space-y-4"
+            className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm p-4 space-y-3"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

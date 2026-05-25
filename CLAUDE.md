@@ -1,5 +1,17 @@
 # CLAUDE.md
 
+## Session Start — Read These First
+
+Every session, before touching any code, read these three files in order:
+
+1. **`ARCHITECTURE.md`** — backend design, service layer contracts, data flow, permanent constraints
+2. **`SPEC.md`** — every feature, screen, and acceptance criterion; build sequence; what's deferred
+3. **`prototype.html`** — the canonical UI reference; open in a browser to see the target UX
+
+If a task conflicts with SPEC.md or ARCHITECTURE.md, flag it before proceeding. If a feature isn't in SPEC.md, add it there before building it. Never silently diverge from the prototype — note the deviation in SPEC.md with a reason.
+
+Figma file (design reference): https://www.figma.com/design/JzcWlW4gaE6jAxCJzM4Its
+
 ## Communication
 
 - Never open with filler phrases ("Great question!", "Of course!", "Certainly!"). Start every response with the actual answer.

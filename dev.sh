@@ -22,11 +22,19 @@ _start_backend() {
   echo "backend started (pid $!)"
 }
 
+_build_charts() {
+  echo "building charts package..."
+  cd "$ROOT"
+  npm run build --workspace=packages/charts
+  echo "charts built"
+}
+
 _start_frontend() {
   if [ -f "$PID_DIR/frontend.pid" ] && kill -0 "$(cat "$PID_DIR/frontend.pid")" 2>/dev/null; then
     echo "frontend already running (pid $(cat "$PID_DIR/frontend.pid"))"
     return
   fi
+  _build_charts
   echo "starting frontend..."
   cd "$FRONTEND"
   npm run dev > "$LOG_DIR/frontend.log" 2>&1 &

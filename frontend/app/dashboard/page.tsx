@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ResponsiveGridLayout } from "react-grid-layout";
+import type { Layout } from "react-grid-layout";
 import { useContainerWidth } from "react-grid-layout/react";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -23,6 +24,7 @@ import type { Dashboard, DashboardTile, DashboardEditor, QueryResponse } from "@
 import { selectChartType, useRegistry } from "@bi-tool/charts";
 import type { ChartConfig, ChartType } from "@bi-tool/charts";
 import ChartView from "@/components/ChartView";
+import ChartCustomizer from "@/components/ChartCustomizer";
 import Nav from "@/components/Nav";
 
 export default function DashboardPage() {
@@ -38,6 +40,7 @@ export default function DashboardPage() {
   const [results, setResults] = useState<Record<string, QueryResponse>>({});
   const [chartConfigs, setChartConfigs] = useState<Record<string, ChartConfig>>({});
   const [loading, setLoading] = useState(false);
+  const [tileErrors, setTileErrors] = useState<Record<string, string>>({});
 
   // Share modal state
   const [shareTarget, setShareTarget] = useState<Dashboard | null>(null);
@@ -65,11 +68,13 @@ export default function DashboardPage() {
   async function openDashboard(d: Dashboard) {
     setActiveDashboard(d);
     setLoading(true);
+    setTileErrors({});
     try {
       const t = await listDashboardTiles(jwt, d.id);
       setTiles(t);
       const res: Record<string, QueryResponse> = {};
       const configs: Record<string, ChartConfig> = {};
+      const errors: Record<string, string> = {};
       await Promise.all(
         t.map(async (tile) => {
           try {
@@ -84,18 +89,21 @@ export default function DashboardPage() {
             configs[tile.id] = savedConfig?.type
               ? savedConfig
               : selectChartType(r.columns, rows, registry);
-          } catch { /* tile fails silently */ }
+          } catch (e) {
+            errors[tile.id] = e instanceof Error ? e.message : "Query failed";
+          }
         })
       );
       setResults(res);
       setChartConfigs(configs);
+      setTileErrors(errors);
     } finally {
       setLoading(false);
     }
   }
 
   const handleLayoutChange = useCallback(
-    (currentLayout: Array<{ i: string; x: number; y: number; w: number; h: number }>) => {
+    (currentLayout: Layout) => {
       const dash = activeDashboardRef.current;
       if (!dash?.can_edit) return;
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -199,26 +207,29 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
       <Nav />
-      <div className="flex-1 p-4 md:p-6">
-        <div className="max-w-[1400px] mx-auto space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 items-start">
+      <div className="flex-1">
+        <div className="max-w-[1080px] mx-auto px-4 py-3 md:py-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 items-start">
             {/* Sidebar */}
             <div className="space-y-2">
               <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Dashboards</p>
               {dashboards.length === 0 && (
-                <p className="text-xs text-gray-600">No dashboards yet. Save a query from the query view.</p>
+                <p className="text-xs text-gray-600">
+                  No dashboards yet.{" "}
+                  <a href="/" className="text-indigo-400 hover:text-indigo-300 transition-colors">Run a query →</a>
+                </p>
               )}
               {dashboards.map((d) => (
                 <div
                   key={d.id}
-                  className={`flex items-center justify-between rounded-lg px-3 py-2 cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 cursor-pointer transition-colors ${
                     activeDashboard?.id === d.id
                       ? "bg-indigo-600/20 border border-indigo-600/40"
                       : "bg-gray-900 border border-gray-800 hover:border-gray-700"
                   }`}
                   onClick={() => openDashboard(d)}
                 >
-                  <span className="text-sm truncate flex-1 min-w-0">{d.name}</span>
+                  <span className="text-xs truncate flex-1 min-w-0">{d.name}</span>
                   <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                     {d.is_owner && (
                       <button
@@ -271,12 +282,10 @@ export default function DashboardPage() {
                     breakpoints={{ lg: 1200, md: 768, sm: 480 }}
                     cols={{ lg: 12, md: 10, sm: 6 }}
                     rowHeight={100}
-                    margin={[8, 8]}
-                    draggableHandle=".drag-handle"
-                    isDraggable={canEdit}
-                    isResizable={canEdit}
+                    margin={[8, 8] as const}
+                    dragConfig={{ enabled: canEdit, handle: ".drag-handle" }}
+                    resizeConfig={{ enabled: canEdit, handles: ["se"] as const }}
                     onLayoutChange={canEdit ? handleLayoutChange : undefined}
-                    resizeHandles={["se"]}
                   >
                     {tiles.map((tile) => {
                       const res = results[tile.id];
@@ -288,10 +297,10 @@ export default function DashboardPage() {
                           className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col"
                         >
                           {/* Header */}
-                          <div className={`drag-handle px-4 pt-3 pb-2 border-b border-gray-800/60 flex-shrink-0 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
+                          <div className={`drag-handle px-3 pt-2 pb-1.5 border-b border-gray-800/60 flex-shrink-0 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
                             {/* Title row — full width */}
                             <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm text-gray-100 font-medium leading-snug select-none">{tile.question}</p>
+                              <p className="text-sm text-gray-100 font-medium leading-snug select-none line-clamp-2">{tile.question}</p>
                               <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
                                 <a
                                   href={`/?query_id=${tile.saved_query_id}`}
@@ -318,22 +327,38 @@ export default function DashboardPage() {
                                 )}
                               </div>
                             </div>
-                            {/* Controls row — chart switcher + drag hint */}
+                            {/* Controls row — chart switcher + theme dots + drag hint */}
                             {canEdit && res && (
                               <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-1">
-                                  {chartTypes.map((t) => (
-                                    <button
-                                      key={t}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      onClick={() => handleChartTypeChange(tile, t as ChartType)}
-                                      className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                                        ct === t ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"
-                                      }`}
-                                    >
-                                      {t}
-                                    </button>
-                                  ))}
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1">
+                                    {chartTypes.map((t) => (
+                                      <button
+                                        key={t}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onClick={() => handleChartTypeChange(tile, t as ChartType)}
+                                        className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                                          ct === t ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"
+                                        }`}
+                                      >
+                                        {t}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  {ct !== "table" && (
+                                    <div onMouseDown={(e) => e.stopPropagation()}>
+                                      <ChartCustomizer
+                                        config={chartConfigs[tile.id] ?? { type: ct }}
+                                        columns={res.columns}
+                                        onChange={(updates) => {
+                                          const current = chartConfigs[tile.id] ?? { type: ct };
+                                          const updated = { ...current, ...updates } as import("@bi-tool/charts").ChartConfig;
+                                          setChartConfigs((prev) => ({ ...prev, [tile.id]: updated }));
+                                          updateTileConfig(jwt, tile.dashboard_id, tile.id, ct, updated as unknown as Record<string, unknown>).catch(() => {});
+                                        }}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                                 {/* Explicit drag affordance */}
                                 <div className="text-gray-700 cursor-grab" title="Drag to move">
@@ -348,11 +373,29 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Content */}
-                          <div className="flex-1 overflow-auto p-3 min-h-0">
-                            {!res && <p className="text-xs text-gray-600">Failed to load data.</p>}
+                          <div className="flex-1 overflow-auto p-2 min-h-0">
+                            {!res && (
+                              <div className="flex flex-col items-center justify-center h-full gap-2 py-6 text-center">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500 flex-shrink-0">
+                                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                                <p className="text-xs text-red-400 max-w-[180px] leading-relaxed">
+                                  {tileErrors[tile.id] ?? "Failed to load data."}
+                                </p>
+                                <a
+                                  href={`/?query_id=${tile.saved_query_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                                >
+                                  Open in editor ↗
+                                </a>
+                              </div>
+                            )}
 
                             {res && ct !== "table" && (
-                              <div className="h-full">
+                              <div className="h-full overflow-hidden rounded">
                                 <ChartView chartType={ct} columns={res.columns} rows={res.rows} config={config} />
                               </div>
                             )}
@@ -396,7 +439,7 @@ export default function DashboardPage() {
           onClick={() => setShareTarget(null)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md p-6 space-y-4"
+            className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md p-4 space-y-3"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

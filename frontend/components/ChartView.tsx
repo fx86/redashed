@@ -1,27 +1,41 @@
 "use client";
 
-import { BarChart, LineChart, ScatterPlot } from "@bi-tool/charts";
-import type { ChartType } from "@bi-tool/charts";
+import { useRegistry, useChartTheme, useThemeRegistry } from "@bi-tool/charts";
+import type { ChartType, ChartConfig } from "@bi-tool/charts";
 
 interface Props {
   chartType: ChartType;
   columns: string[];
   rows: unknown[][];
-  x?: string;
-  y?: string;
+  config: ChartConfig;
 }
 
-export default function ChartView({ chartType, columns, rows, x, y }: Props) {
-  if (chartType === "table" || !x || !y) return null;
+export default function ChartView({ chartType, columns, rows, config }: Props) {
+  const registry = useRegistry();
+  const defaultTheme = useChartTheme();
+  const themeRegistry = useThemeRegistry();
+
+  if (chartType === "table") return null;
+
+  const def = registry.get(chartType);
+  if (!def) return null;
+
+  const baseTheme =
+    config.themeName && themeRegistry.has(config.themeName)
+      ? themeRegistry.get(config.themeName)!
+      : defaultTheme;
+
+  // Per-chart highlightMode override takes precedence over theme default
+  const theme = config.highlightMode
+    ? { ...baseTheme, highlightMode: config.highlightMode }
+    : baseTheme;
 
   const data = rows.map((row) => {
     const obj: Record<string, unknown> = {};
-    columns.forEach((col, i) => { obj[col] = row[i]; });
+    columns.forEach((col, i) => { obj[col] = (row as unknown[])[i]; });
     return obj;
   });
 
-  if (chartType === "bar") return <BarChart data={data} x={x} y={y} />;
-  if (chartType === "line") return <LineChart data={data} x={x} y={y} />;
-  if (chartType === "scatter") return <ScatterPlot data={data} x={x} y={y} />;
-  return null;
+  const Component = def.component;
+  return <Component data={data} columns={columns} config={config} theme={theme} />;
 }

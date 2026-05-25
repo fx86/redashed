@@ -6,45 +6,39 @@ import type { ChartProps, ChartDefinition } from "../registry";
 import { inferKind } from "../utils/infer";
 import { fmt } from "../utils/fmt";
 
-export function ScatterPlot({ data, config, theme }: ChartProps) {
+export function AreaChart({ data, config, theme }: ChartProps) {
   const { x = "", y = "" } = config;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ref.current || !data.length || !x || !y) return;
 
-    const xs = data.map((d) => d[x] as number);
-    const ys = data.map((d) => d[y] as number);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const mode = theme.highlightMode ?? "max";
-
-    // "uniform" fills every dot with ink at full opacity; "max" keeps the subtle 0.6 opacity
-    const fillOpacity = mode === "uniform" ? 0.8 : 0.6;
+    const coerced = data.map((d) => ({ ...d, [x]: new Date(d[x] as string) }));
+    const vals = coerced.map((d) => d[y] as number);
+    const minY = Math.min(...vals);
+    const maxY = Math.max(...vals);
 
     const plot = Plot.plot({
       marginTop: 16,
       marginRight: 24,
-      marginBottom: 32,
+      marginBottom: 24,
       marginLeft: 48,
       width: ref.current.offsetWidth || 600,
       marks: [
-        Plot.dot(data, {
+        Plot.areaY(coerced, {
           x,
           y,
           fill: theme.ink,
-          fillOpacity,
-          r: 3,
-          stroke: "none",
+          fillOpacity: 0.12,
+        }),
+        Plot.lineY(coerced, {
+          x,
+          y,
+          stroke: theme.ink,
+          strokeWidth: 1.5,
         }),
       ],
-      x: {
-        label: null,
-        tickSize: 0,
-        ticks: [minX, maxX],
-        tickFormat: (d) => fmt(d),
-        domain: [minX, maxX],
-      },
+      x: { type: "utc", label: null, tickSize: 0, ticks: 4 },
       y: {
         label: null,
         tickSize: 0,
@@ -67,21 +61,24 @@ export function ScatterPlot({ data, config, theme }: ChartProps) {
   return <div ref={ref} className="w-full" />;
 }
 
-export const scatterDefinition: ChartDefinition = {
-  type: "scatter",
-  name: "Scatter Plot",
-  description: "Correlation between two numeric columns.",
+export const areaDefinition: ChartDefinition = {
+  type: "area",
+  name: "Area Chart",
+  description: "Time series with filled area — emphasises volume over rate.",
 
   suitability(columns, data) {
+    const dates = columns.filter((c) => inferKind(data.map((r) => r[c])) === "date");
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    if (nums.length >= 2) return 0.7;
+    // Scores below line (0.9) so line wins auto-selection; area available via user override
+    if (dates.length >= 1 && nums.length >= 1) return 0.75;
     return 0;
   },
 
   deriveConfig(columns, data) {
+    const dates = columns.filter((c) => inferKind(data.map((r) => r[c])) === "date");
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    return { x: nums[0], y: nums[1] };
+    return { x: dates[0], y: nums[0] };
   },
 
-  component: ScatterPlot,
+  component: AreaChart,
 };

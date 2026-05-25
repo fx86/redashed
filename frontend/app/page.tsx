@@ -24,6 +24,7 @@ import QueryInput from "@/components/QueryInput";
 import ResultsTable from "@/components/ResultsTable";
 import ChartView from "@/components/ChartView";
 import SaveToDashboard from "@/components/SaveToDashboard";
+import ChartCustomizer from "@/components/ChartCustomizer";
 
 type AppStep = "connections" | "query";
 type QueryMode = "ai" | "sql";
@@ -101,10 +102,10 @@ export default function Home() {
       return;
     }
 
-    // Read ?query_id from URL before loading connections
-    const queryId = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("query_id")
-      : null;
+    // Read URL params before loading connections
+    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const queryId = params?.get("query_id") ?? null;
+    const connectionId = params?.get("connection_id") ?? null;
 
     listUserConnections(jwt)
       .then(async (conns) => {
@@ -113,11 +114,12 @@ export default function Home() {
 
         if (queryId) {
           try {
-            // Load a specific saved query and connect to its connection
             const q = await getSavedQuery(jwt, queryId);
             const conn = conns.find((c) => c.id === q.connection_id) ?? conns[0];
-            const tables = await getConnectionSchema(jwt, conn.id);
-            const anns = await listAnnotations(jwt, conn.id).catch(() => []);
+            const [tables, anns] = await Promise.all([
+              getConnectionSchema(jwt, conn.id),
+              listAnnotations(jwt, conn.id).catch(() => []),
+            ]);
             setActiveConnection(conn);
             setSchema(tables);
             setAnnotations(anns);
@@ -125,10 +127,30 @@ export default function Home() {
             setLastQuestion(q.question);
             setQueryMode("sql");
             setStep("query");
-            // Remove query_id from URL so refreshing doesn't reload the same query
             window.history.replaceState({}, "", "/");
+            // Auto-run the saved query so results appear immediately
+            try {
+              const res = await runSql(jwt, conn.id, q.sql);
+              applyResult(res, q.question);
+            } catch { /* SQL loaded, user can run manually */ }
           } catch {
-            // Fall back to first connection
+            await connectFirst(conns, jwt);
+          }
+        } else if (connectionId) {
+          const conn = conns.find((c) => c.id === connectionId);
+          window.history.replaceState({}, "", "/");
+          if (conn) {
+            try {
+              const tables = await getConnectionSchema(jwt, conn.id);
+              const anns = await listAnnotations(jwt, conn.id).catch(() => []);
+              const draft = loadDraft(conn.id);
+              if (draft) { setSqlInput(draft.sql); setLastQuestion(draft.question); setQueryMode("sql"); setIsDirty(true); }
+              setActiveConnection(conn);
+              setSchema(tables);
+              setAnnotations(anns);
+              setStep("query");
+            } catch { await connectFirst(conns, jwt); }
+          } else {
             await connectFirst(conns, jwt);
           }
         } else {
@@ -342,18 +364,19 @@ export default function Home() {
     <main className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
       <Nav />
 
-      <div className="flex-1 p-4 md:p-6">
-        <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex-1">
+        <div className="max-w-[1080px] mx-auto px-4 py-3 md:py-4 space-y-4">
           {error && (
-            <p className="text-sm text-red-400 bg-red-950/40 border border-red-800 rounded p-3">
-              {error}
-            </p>
+            <div className="flex items-start justify-between gap-2 text-sm text-red-400 bg-red-950/40 border border-red-800 rounded p-3">
+              <span>{error}</span>
+              <button onClick={() => setError(null)} className="flex-shrink-0 text-red-600 hover:text-red-400 leading-none mt-0.5">✕</button>
+            </div>
           )}
 
           {step === "connections" && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-gray-400">Connections</h2>
+                <h2 className="text-sm font-semibold text-gray-200">Connections</h2>
                 <button
                   onClick={() => { setShowAddForm(true); setError(null); }}
                   className="text-xs px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors"
@@ -374,14 +397,19 @@ export default function Home() {
                 <p className="text-sm text-gray-500">No connections yet. Add one to get started.</p>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {connections.map((conn) => (
                   <div
                     key={conn.id}
-                    className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-4 py-3"
+                    className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5"
                   >
                     <div>
-                      <p className="text-sm font-medium">{conn.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium">{conn.name}</p>
+                        <span className="text-[10px] text-gray-600 bg-gray-800 border border-gray-700 rounded px-1 leading-4">
+                          {conn.db_type === "postgres" ? "PG" : conn.db_type === "snowflake" ? "SF" : (conn.db_type ?? "DB").slice(0, 3).toUpperCase()}
+                        </span>
+                      </div>
                       <p className="text-xs text-gray-500">
                         {conn.host}:{conn.port} / {conn.database}
                       </p>
@@ -400,31 +428,36 @@ export default function Home() {
           )}
 
           {step === "query" && activeConnection && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <button
                   onClick={goToConnections}
-                  className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+                  className="flex items-center gap-1 text-gray-500 hover:text-gray-300 text-xs transition-colors"
                 >
-                  ←
+                  <span>←</span>
+                  <span className="text-gray-600 hover:text-gray-400">Connections</span>
                 </button>
-                <p className="text-sm text-gray-400">
-                  <span className="text-gray-200">{activeConnection.name}</span>
-                  <span className="mx-2 text-gray-700">/</span>
+                <span className="text-gray-800">/</span>
+                <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                  <span className="text-gray-200 font-medium">{activeConnection.name}</span>
+                  <span className="text-[10px] text-gray-600 bg-gray-800 border border-gray-700 rounded px-1 leading-4">
+                    {activeConnection.db_type === "postgres" ? "PG" : activeConnection.db_type === "snowflake" ? "SF" : (activeConnection.db_type ?? "DB").slice(0, 3).toUpperCase()}
+                  </span>
+                  <span className="text-gray-700">·</span>
                   <span>{activeConnection.database}</span>
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3">
                 <SchemaPanel
                   tables={schema}
                   annotations={annotations}
                   onAnnotate={handleAnnotate}
                 />
-                <div className="space-y-4">
+                <div className="space-y-3">
 
                   {/* Mode toggle */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div className="flex bg-gray-800 rounded-lg p-0.5 border border-gray-700 gap-0.5">
                       <button
                         onClick={() => setQueryMode("ai")}
@@ -497,10 +530,10 @@ export default function Home() {
                   )}
 
                   {result && (
-                    <div className="space-y-3">
-                      {chartConfig.type !== "table" && (
-                        <div className="flex items-center gap-1">
-                          {(["bar", "line", "scatter", "table"] as ChartType[]).map((t) => (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {(["table", ...registry.all().map((d) => d.type)] as ChartType[]).map((t) => (
                             <button
                               key={t}
                               onClick={() => setChartType(t)}
@@ -514,10 +547,20 @@ export default function Home() {
                             </button>
                           ))}
                         </div>
-                      )}
+                        {chartType !== "table" && (
+                          <ChartCustomizer
+                            config={chartConfig}
+                            columns={result.columns}
+                            onChange={(updates) => {
+                              setChartConfig((prev) => ({ ...prev, ...updates }));
+                              setIsDirty(true);
+                            }}
+                          />
+                        )}
+                      </div>
 
                       {chartType !== "table" && (
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div className="border border-gray-800 rounded-lg overflow-hidden">
                           <ChartView
                             chartType={chartType}
                             columns={result.columns}

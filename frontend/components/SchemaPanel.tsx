@@ -55,12 +55,12 @@ export default function SchemaPanel({ tables, annotations = [], onAnnotate }: Pr
   }
 
   return (
-    <aside className="bg-gray-900 border border-gray-800 rounded p-3 overflow-y-auto max-h-[calc(100vh-160px)]">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+    <aside className="bg-gray-900 border border-gray-800 rounded-lg p-2.5 overflow-y-auto max-h-64 md:max-h-[calc(100vh-120px)]">
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-semibold">
         {tables.length} table{tables.length !== 1 ? "s" : ""}
         {onAnnotate && <span className="ml-1 text-gray-700 normal-case tracking-normal">· hover to annotate</span>}
       </p>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {tables.map((t) => {
           const tableKey = `${t.schema}.${t.name}`;
           const open = expanded.has(tableKey);
@@ -71,11 +71,11 @@ export default function SchemaPanel({ tables, annotations = [], onAnnotate }: Pr
               <div className="group flex items-start gap-1">
                 <button
                   onClick={() => toggle(tableKey)}
-                  className="flex-1 text-left text-sm py-1 px-2 rounded hover:bg-gray-800 flex items-center gap-1 min-w-0"
+                  className="flex-1 text-left text-xs py-0.5 px-1.5 rounded hover:bg-gray-800 flex items-center gap-1 min-w-0"
                 >
-                  <span className="text-gray-500 text-xs flex-shrink-0">{open ? "▾" : "▸"}</span>
+                  <span className="text-gray-600 text-[10px] flex-shrink-0">{open ? "▾" : "▸"}</span>
                   <span className="text-gray-200 truncate">{t.name}</span>
-                  <span className="text-gray-600 text-xs ml-1">{t.schema}</span>
+                  <span className="text-gray-600 text-[10px] ml-1">{t.schema}</span>
                 </button>
                 {onAnnotate && (
                   <button
