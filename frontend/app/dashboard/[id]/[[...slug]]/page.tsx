@@ -41,6 +41,7 @@ export default function DashboardViewPage() {
   const [tileLoading, setTileLoading] = useState<Record<string, boolean>>({});
   const [tileErrors, setTileErrors] = useState<Record<string, string>>({});
   const [pageLoading, setPageLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
 
   // Share modal
   const [shareOpen, setShareOpen] = useState(false);
@@ -183,7 +184,8 @@ export default function DashboardViewPage() {
 
   if (!user || !dashboard) return null;
 
-  const canEdit = dashboard.can_edit;
+  // canEdit = permission AND user has explicitly toggled edit mode
+  const canEdit = dashboard.can_edit && editMode;
   const gridLayout = tiles.map((tile) => ({
     i: tile.id,
     x: tile.layout?.x ?? 0,
@@ -200,7 +202,7 @@ export default function DashboardViewPage() {
 
       {/* Dashboard header */}
       <div className="bg-gray-900/60 border-b border-gray-800 flex-shrink-0">
-        <div className="max-w-[1280px] mx-auto px-4 py-2.5 flex items-center gap-3">
+        <div className="max-w-[1080px] mx-auto px-4 py-2.5 flex items-center gap-3">
           <a
             href="/dashboard"
             className="text-gray-500 hover:text-gray-300 text-xs flex items-center gap-1 transition-colors flex-shrink-0"
@@ -217,6 +219,25 @@ export default function DashboardViewPage() {
             {!dashboard.is_owner && (
               <span className="text-[10px] text-indigo-400/70 font-medium px-1.5 py-0.5 bg-indigo-950/50 rounded">shared</span>
             )}
+
+            {/* Edit mode toggle — only shown to users with edit permission */}
+            {dashboard.can_edit && (
+              <button
+                onClick={() => setEditMode((v) => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors ${
+                  editMode
+                    ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                {editMode ? "Editing" : "Edit"}
+              </button>
+            )}
+
             {dashboard.is_owner && (
               <button
                 onClick={openShare}
@@ -229,7 +250,7 @@ export default function DashboardViewPage() {
                 Share
               </button>
             )}
-            {dashboard.is_owner && (
+            {dashboard.is_owner && editMode && (
               <button
                 onClick={handleDeleteDashboard}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-600 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-colors"
@@ -242,7 +263,7 @@ export default function DashboardViewPage() {
       </div>
 
       {/* Tile grid */}
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 max-w-[1080px] mx-auto w-full">
         {tiles.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
             <p className="text-gray-600 text-sm">No tiles in this dashboard yet.</p>

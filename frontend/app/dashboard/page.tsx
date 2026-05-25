@@ -7,6 +7,10 @@ import { listDashboards, createDashboard, deleteDashboard } from "@/lib/api";
 import type { Dashboard } from "@/lib/api";
 import Nav from "@/components/Nav";
 
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
@@ -47,7 +51,7 @@ export default function DashboardListPage() {
     setCreating(true);
     try {
       const d = await createDashboard(jwt, newName.trim());
-      router.push(`/dashboard/${d.id}`);
+      router.push(`/dashboard/${d.id}/${slugify(d.name)}`);
     } catch {
       setCreating(false);
     }
@@ -150,7 +154,7 @@ export default function DashboardListPage() {
             {dashboards.map((d) => (
               <div
                 key={d.id}
-                onClick={() => router.push(`/dashboard/${d.id}`)}
+                onClick={() => router.push(`/dashboard/${d.id}/${slugify(d.name)}`)}
                 className="group relative cursor-pointer bg-gray-900 border border-gray-800 hover:border-indigo-600/50 rounded-xl p-4 transition-all hover:shadow-lg hover:shadow-indigo-950/30"
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
