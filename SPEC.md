@@ -179,15 +179,24 @@
 
 > Prototype reference: "Queries" tab
 
+- [x] Search bar — filters by name in real time
+- [x] Tabs: All · Recent
+- [x] Click row → opens query in editor
+- [x] Rename query (double-click)
+- [x] Delete query
+- [x] Add to dashboard modal
 - [ ] Table: star · name · created by · last updated · data source · actions
-- [ ] Search bar — filters by name in real time
-- [ ] Filter by data source
-- [ ] Filter by tag
-- [ ] Star / favourite toggle per row
-- [ ] Click row → opens query in editor
-- [ ] "Edit" link → opens query in editor
-- [ ] "Run" link → opens query in editor and immediately runs it
-- [ ] Tabs: All · My Queries · Favourites · Recent
+- [ ] Star / favourite toggle per row — persisted to DB
+- [ ] Tabs: My Queries · Favourites (in addition to All · Recent)
+- [ ] Filter by data source (connection name dropdown)
+- [ ] Tagging — add/remove tags on any query; tags stored as `text[]` on `saved_queries`
+- [ ] Filter by tag — tag chips above the table, multi-select
+- [ ] Full-text search — search across query title AND SQL content, not just title
+- [ ] Query sharing — "Share" button generates a read-only token link; recipient can view result + chart but not edit
+- [ ] Share to specific user — share directly to a user by email; appears in their "Shared with me" tab
+- [ ] "Shared with me" tab — queries shared by other users
+- [ ] "Edit" action → opens query in editor
+- [ ] "Run" action → opens query in editor and immediately executes it
 
 ---
 
@@ -217,6 +226,54 @@
 - [ ] Completion indicator: X of Y columns annotated
 - [ ] Annotations stored in Supabase, injected into AI prompts
 - [ ] Annotations are optional — AI still works without them
+
+---
+
+## 6b. data.gov Connections
+
+- [x] User can search data.gov datasets by keyword (CKAN API, no key required)
+- [x] Search results show datasets with available CSV resources
+- [x] "Import" ingests CSV into local Postgres `datagov` schema (500k row cap)
+- [x] Ingested dataset appears in connections list with a "GOV" badge
+- [x] Queryable via AI and raw SQL exactly like warehouse connections
+- [x] Delete drops the ingested table from local Postgres
+- [ ] Manual refresh (re-fetch + reload the CSV) — deferred
+- [ ] Row count / last ingested timestamp shown on connection card — deferred
+
+### 6c. World Bank Data Portal
+
+- [ ] Search World Bank indicators via World Bank API (no key required)
+- [ ] Browse by topic/country/indicator
+- [ ] Ingest result as a Postgres table in `public_data` schema, same pattern as data.gov
+- [ ] "WB" badge in connection list
+
+### 6d. India Open Data (data.gov.in)
+
+- [ ] Search datasets via data.gov.in CKAN API
+- [ ] CSV/JSON resource download and ingest into `public_data` schema
+- [ ] "IND" badge in connection list
+
+### 6f. Collaborative Query Combining
+
+- [ ] User A saves a query and shares a dashboard (existing sharing mechanism)
+- [ ] User B adds their own query to the same dashboard
+- [ ] "Combine" button on any two tiles — opens a join configuration modal
+- [ ] Join modal: auto-suggests matching columns by name intersection; user confirms or overrides join key and join type (inner / left / full)
+- [ ] Backend materialises both query results into `public_data` schema as temp tables, executes the join, returns combined result
+- [ ] Combined result rendered as a new chart tile on the shared dashboard — both users see the same visualisation
+- [ ] Combined tile shows provenance: "Query A (owner) × Query B (collaborator)"
+- [ ] Re-running either source query updates the combined tile on next load
+- [ ] Invite by email: User A can invite User B to a shared dashboard by email (see §3.5 deferred item)
+
+---
+
+### 6e. Cross-Dataset Query (Join Schema)
+
+- [ ] Ingested public datasets (data.gov, World Bank, India) share a common `public_data` Postgres schema
+- [ ] Users can write SQL that joins tables across datasets (e.g. `JOIN public_data.wb_gdp ON public_data.india_population`)
+- [ ] AI is given schema context for all ingested tables in `public_data` when answering questions against a "multi-source" virtual connection
+- [ ] UI: "Multi-source query" option in connection selector — selects all ingested public datasets as the context
+- [ ] Query chaining: user can reference a previous query result as a CTE, then join it with another dataset
 
 ---
 

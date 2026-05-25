@@ -5,7 +5,7 @@ from app.models.schemas import (
     ConnectionParams, QueryResponse, SavedConnectionQueryRequest, RunSqlRequest,
     UpsertAnnotationRequest, AnnotationResponse,
 )
-from app.services import encryption_service, connection_service, ai_service, query_service, local_db_service
+from app.services import encryption_service, connection_service, ai_service, query_service, local_db_service, datagov_service
 
 router = APIRouter(prefix="/user-connections", tags=["user-connections"])
 
@@ -68,6 +68,17 @@ def list_connections(user=Depends(get_current_user)):
 @router.get("/{connection_id}/schema", response_model=SchemaResponse)
 def get_schema(connection_id: str, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
+    if row.get("db_type") == "datagov":
+        table_name = row.get("extra_config", {}).get("table_name", "")
+        cols = datagov_service.get_schema(table_name)
+        schema, tname = table_name.split(".", 1) if "." in table_name else ("datagov", table_name)
+        from app.models.schemas import TableInfo, ColumnInfo
+        table = TableInfo(
+            schema=schema,
+            name=tname,
+            columns=[ColumnInfo(name=c["column_name"], type=c["data_type"], nullable=c["is_nullable"] == "YES") for c in cols],
+        )
+        return SchemaResponse(tables=[table])
     params = _params_from_row(row)
     tables = connection_service.test_and_introspect(params)
     return SchemaResponse(tables=tables)
@@ -76,14 +87,29 @@ def get_schema(connection_id: str, user=Depends(get_current_user)):
 @router.post("/{connection_id}/query", response_model=QueryResponse)
 def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
-    params = _params_from_row(row)
     try:
-        tables = connection_service.test_and_introspect(params)
-        annotations = local_db_service.list_annotations(user["user_id"], connection_id)
-        sql = ai_service.generate_sql(body.question, tables, annotations)
-        if sql.startswith("-- Cannot answer"):
-            raise HTTPException(status_code=422, detail=sql)
-        columns, result_rows, elapsed_ms = query_service.execute_select(params, sql)
+        if row.get("db_type") == "datagov":
+            table_name = row.get("extra_config", {}).get("table_name", "")
+            cols = datagov_service.get_schema(table_name)
+            schema, tname = table_name.split(".", 1) if "." in table_name else ("datagov", table_name)
+            from app.models.schemas import TableInfo, ColumnInfo
+            tables = [TableInfo(
+                schema=schema, name=tname,
+                columns=[ColumnInfo(name=c["column_name"], type=c["data_type"], nullable=c["is_nullable"] == "YES") for c in cols],
+            )]
+            annotations = local_db_service.list_annotations(user["user_id"], connection_id)
+            sql = ai_service.generate_sql(body.question, tables, annotations)
+            if sql.startswith("-- Cannot answer"):
+                raise HTTPException(status_code=422, detail=sql)
+            columns, result_rows, elapsed_ms = datagov_service.execute_select(sql)
+        else:
+            params = _params_from_row(row)
+            tables = connection_service.test_and_introspect(params)
+            annotations = local_db_service.list_annotations(user["user_id"], connection_id)
+            sql = ai_service.generate_sql(body.question, tables, annotations)
+            if sql.startswith("-- Cannot answer"):
+                raise HTTPException(status_code=422, detail=sql)
+            columns, result_rows, elapsed_ms = query_service.execute_select(params, sql)
         return QueryResponse(sql=sql, columns=columns, rows=result_rows, row_count=len(result_rows), execution_time_ms=elapsed_ms)
     except HTTPException:
         raise
@@ -96,9 +122,12 @@ def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user
 @router.post("/{connection_id}/run-sql", response_model=QueryResponse)
 def run_sql(connection_id: str, body: RunSqlRequest, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
-    params = _params_from_row(row)
     try:
-        columns, result_rows, elapsed_ms = query_service.execute_select(params, body.sql)
+        if row.get("db_type") == "datagov":
+            columns, result_rows, elapsed_ms = datagov_service.execute_select(body.sql)
+        else:
+            params = _params_from_row(row)
+            columns, result_rows, elapsed_ms = query_service.execute_select(params, body.sql)
         return QueryResponse(sql=body.sql, columns=columns, rows=result_rows, row_count=len(result_rows), execution_time_ms=elapsed_ms)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -108,6 +137,11 @@ def run_sql(connection_id: str, body: RunSqlRequest, user=Depends(get_current_us
 
 @router.delete("/{connection_id}", status_code=204)
 def delete_connection(connection_id: str, user=Depends(get_current_user)):
+    row = local_db_service.get_user_connection(connection_id, user["user_id"])
+    if row and row.get("db_type") == "datagov":
+        table_name = row.get("extra_config", {}).get("table_name", "")
+        if table_name:
+            datagov_service.drop_table(table_name)
     local_db_service.delete_user_connection(connection_id, user["user_id"])
 
 

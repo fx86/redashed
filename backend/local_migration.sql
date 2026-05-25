@@ -118,3 +118,8 @@ CREATE TABLE IF NOT EXISTS schema_annotations (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS schema_annotations_conn_idx ON schema_annotations (user_id, connection_id);
+
+-- data.gov ingested datasets (tables created dynamically by datagov_service)
+-- user_connections rows with db_type='datagov' store metadata in extra_config
+-- The actual data lives in the datagov schema below
+CREATE SCHEMA IF NOT EXISTS datagov;

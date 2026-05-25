@@ -182,3 +182,10 @@ class UpdateLayoutRequest(BaseModel):
 
 class RunSqlRequest(BaseModel):
     sql: str
+
+
+# data.gov
+class DataGovImportRequest(BaseModel):
+    dataset_id: str
+    dataset_title: str
+    resource_url: str

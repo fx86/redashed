@@ -357,3 +357,38 @@ export async function deleteAnnotation(jwt: string, connectionId: string, annota
     headers: authHeaders(jwt),
   });
 }
+
+// data.gov
+
+export interface DataGovResource {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface DataGovDataset {
+  id: string;
+  title: string;
+  notes: string;
+  organization: string;
+  resources: DataGovResource[];
+}
+
+export async function searchDataGov(jwt: string, q: string): Promise<DataGovDataset[]> {
+  const res = await fetch(`${BASE}/datagov/search?q=${encodeURIComponent(q)}`, {
+    headers: authHeaders(jwt),
+  });
+  return handleResponse<DataGovDataset[]>(res);
+}
+
+export async function importDataGov(
+  jwt: string,
+  body: { dataset_id: string; dataset_title: string; resource_url: string }
+): Promise<SavedConnection> {
+  const res = await fetch(`${BASE}/datagov/import`, {
+    method: "POST",
+    headers: authHeaders(jwt),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<SavedConnection>(res);
+}
