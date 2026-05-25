@@ -1,17 +1,34 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { ChartProps, ChartDefinition, ChartBaseConfig } from "../registry";
 import { inferKind } from "../utils/infer";
 import { fmt } from "../utils/fmt";
 
 export interface KPIConfig extends ChartBaseConfig {
-  value?: string;  // primary metric column
-  delta?: string;  // optional comparison column (prior period, target, etc.)
-  label?: string;  // display label override — defaults to column name
+  value?: string;
+  delta?: string;
+  label?: string;
 }
 
 export function KPITile({ data, config, theme }: ChartProps<KPIConfig>) {
   const { value = "", delta, label } = config;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fontSize, setFontSize] = useState(48);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      // Scale to ~28% of height, also bounded by width so it doesn't overflow
+      const fromHeight = height * 0.28;
+      const fromWidth = width * 0.22;
+      setFontSize(Math.min(Math.max(Math.min(fromHeight, fromWidth), 24), 140));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   if (!data.length || !value) return null;
 
@@ -29,31 +46,41 @@ export function KPITile({ data, config, theme }: ChartProps<KPIConfig>) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center h-full min-h-[120px] gap-1.5 select-none px-4"
+      ref={containerRef}
+      className="flex flex-col items-center justify-center h-full w-full select-none px-4 gap-[0.15em]"
       style={{ fontFamily: theme.fontFamily, color: theme.axis }}
     >
       <div
-        className="text-4xl font-semibold tracking-tight"
-        style={{ color: theme.ink }}
+        className="font-semibold tracking-tight leading-none tabular-nums"
+        style={{ color: theme.ink, fontSize }}
       >
         {fmt(total)}
       </div>
 
-      <div className="text-xs uppercase tracking-widest opacity-50">
+      <div
+        className="uppercase tracking-widest opacity-50 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+        style={{ fontSize: Math.max(fontSize * 0.22, 10) }}
+      >
         {label ?? value}
       </div>
 
       {pct != null && (
         <div
-          className="text-sm font-medium tabular-nums"
-          style={{ color: positive ? "#16a34a" : "#dc2626" }}
+          className="font-medium tabular-nums"
+          style={{
+            color: positive ? "#16a34a" : "#dc2626",
+            fontSize: Math.max(fontSize * 0.28, 12),
+          }}
         >
           {positive ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
         </div>
       )}
 
       {deltaTotal != null && (
-        <div className="text-xs opacity-40 tabular-nums">
+        <div
+          className="opacity-40 tabular-nums"
+          style={{ fontSize: Math.max(fontSize * 0.22, 10) }}
+        >
           vs {fmt(deltaTotal)}
         </div>
       )}
@@ -69,9 +96,7 @@ export const kpiDefinition: ChartDefinition<KPIConfig> = {
   suitability(columns, data) {
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
     const strs = columns.filter((c) => inferKind(data.map((r) => r[c])) === "string");
-    // Single-row aggregate result with numeric(s) and no categoricals
     if (data.length === 1 && nums.length >= 1 && strs.length === 0) return 0.92;
-    // Multi-row but only numerics (e.g. SELECT SUM(a), SUM(b))
     if (data.length <= 3 && nums.length >= 1 && strs.length === 0) return 0.7;
     return 0;
   },
