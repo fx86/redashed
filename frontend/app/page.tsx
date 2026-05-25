@@ -62,6 +62,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [saveToast, setSaveToast] = useState(false);
   const [chartType, setChartType] = useState<ChartType>("table");
   const [chartConfig, setChartConfig] = useState<ChartConfig>({ type: "table" });
   const [showSaveToDashboard, setShowSaveToDashboard] = useState(false);
@@ -88,11 +89,12 @@ export default function Home() {
     return () => document.removeEventListener("keydown", onKey);
   }, [step, result, saved]);
 
-  // Save draft whenever SQL changes
+  // Save draft whenever SQL changes; reset saved state so button re-enables
   useEffect(() => {
     if (activeConnection && sqlInput) {
       saveDraft(activeConnection.id, sqlInput, lastQuestion);
       setIsDirty(true);
+      setSaved(false);
     }
   }, [sqlInput, activeConnection, lastQuestion]);
 
@@ -296,6 +298,8 @@ export default function Home() {
       setSaved(true);
       setIsDirty(false);
       clearDraft();
+      setSaveToast(true);
+      setTimeout(() => setSaveToast(false), 2500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save query");
     }
@@ -624,6 +628,18 @@ export default function Home() {
           onCancel={() => setShowSaveToDashboard(false)}
         />
       )}
+
+      {/* Save toast */}
+      <div
+        className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl text-xs text-gray-200 transition-all duration-300 ${
+          saveToast ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+        }`}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-indigo-400 flex-shrink-0">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        Query saved
+      </div>
     </main>
   );
 }

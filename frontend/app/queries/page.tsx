@@ -31,6 +31,7 @@ export default function QueriesPage() {
   const [queries, setQueries] = useState<SavedQuery[]>([]);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"all" | "recent">("all");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -100,7 +101,11 @@ export default function QueriesPage() {
     finally { setAdding(null); }
   }
 
-  const filtered = queries.filter((q) =>
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const tabFiltered = tab === "recent"
+    ? queries.filter((q) => new Date(q.created_at).getTime() > sevenDaysAgo)
+    : queries;
+  const filtered = tabFiltered.filter((q) =>
     q.question.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -120,20 +125,33 @@ export default function QueriesPage() {
 
       {/* Subbar */}
       <div className="bg-gray-900 border-b border-gray-800">
-        <div className="max-w-[1080px] mx-auto flex items-center px-4 py-2.5 gap-3">
-          <h1 className="text-sm font-semibold text-gray-100">All Queries</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 flex-shrink-0">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                className="bg-transparent border-none outline-none text-gray-100 text-xs w-32 sm:w-40 placeholder:text-gray-600"
-                placeholder="Search…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+        <div className="max-w-[1080px] mx-auto flex items-center px-4 h-10 gap-1">
+          {/* Tabs */}
+          {(["all", "recent"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-3 h-10 text-xs border-b-2 transition-colors whitespace-nowrap capitalize ${
+                tab === t
+                  ? "text-gray-100 font-medium border-indigo-500"
+                  : "text-gray-500 hover:text-gray-300 border-transparent"
+              }`}
+            >
+              {t === "all" ? "All" : "Recent"}
+            </button>
+          ))}
+
+          {/* Search */}
+          <div className="ml-auto flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 flex-shrink-0">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              className="bg-transparent border-none outline-none text-gray-100 text-xs w-32 sm:w-40 placeholder:text-gray-600"
+              placeholder="Search…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </div>
       </div>

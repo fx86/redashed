@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
 const links = [
-  { href: "/", label: "New query" },
   { href: "/dashboard", label: "Dashboards" },
   { href: "/queries", label: "Queries" },
 ];
@@ -13,14 +12,32 @@ export default function Nav() {
   const { user, signOut } = useAuth();
   const path = usePathname();
 
+  function isActive(href: string) {
+    if (href === "/dashboard") return path === "/dashboard" || path.startsWith("/dashboard/");
+    return path === href;
+  }
+
   return (
     <nav className="bg-gray-900 border-b border-gray-800 flex-shrink-0">
       <div className="max-w-[1080px] mx-auto flex items-center h-[46px] px-4 gap-1">
+        {/* Logo + product name */}
+        <a href="/" className="flex items-center gap-2 mr-3 hover:opacity-80 transition-opacity flex-shrink-0">
+          <div className="w-6 h-6 bg-indigo-500 rounded-md flex items-center justify-center text-white text-[11px] font-bold">
+            Q
+          </div>
+          <span className="text-sm font-semibold text-gray-100 hidden sm:block tracking-tight">Querywise</span>
+        </a>
+
+        {/* New query shortcut */}
         <a
           href="/"
-          className="w-[26px] h-[26px] bg-indigo-500 rounded-md flex items-center justify-center text-white text-xs font-medium flex-shrink-0 hover:bg-indigo-400 transition-colors mr-2"
+          className={`px-2.5 h-[46px] flex items-center text-xs border-b-2 transition-colors whitespace-nowrap ${
+            path === "/"
+              ? "text-gray-100 font-medium border-indigo-500"
+              : "text-gray-400 hover:text-gray-100 border-transparent"
+          }`}
         >
-          Q
+          New query
         </a>
 
         {links.map(({ href, label }) => (
@@ -28,7 +45,7 @@ export default function Nav() {
             key={href}
             href={href}
             className={`px-2.5 h-[46px] flex items-center text-xs border-b-2 transition-colors whitespace-nowrap ${
-              path === href
+              isActive(href)
                 ? "text-gray-100 font-medium border-indigo-500"
                 : "text-gray-400 hover:text-gray-100 border-transparent"
             }`}

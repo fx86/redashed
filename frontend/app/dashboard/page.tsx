@@ -1,58 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ResponsiveGridLayout } from "react-grid-layout";
-import type { Layout } from "react-grid-layout";
-import { useContainerWidth } from "react-grid-layout/react";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 import { useAuth } from "@/lib/auth";
-import {
-  listDashboards,
-  listDashboardTiles,
-  deleteDashboard,
-  deleteDashboardTile,
-  runSql,
-  updateDashboardLayout,
-  updateTileConfig,
-  listDashboardEditors,
-  addDashboardEditor,
-  removeDashboardEditor,
-} from "@/lib/api";
-import type { Dashboard, DashboardTile, DashboardEditor, QueryResponse } from "@/lib/api";
-import { selectChartType, useRegistry } from "@bi-tool/charts";
-import type { ChartConfig, ChartType } from "@bi-tool/charts";
-import ChartView from "@/components/ChartView";
-import ChartCustomizer from "@/components/ChartCustomizer";
+import { listDashboards, createDashboard, deleteDashboard } from "@/lib/api";
+import type { Dashboard } from "@/lib/api";
 import Nav from "@/components/Nav";
 
-export default function DashboardPage() {
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+export default function DashboardListPage() {
   const { user, session, loading: authLoading } = useAuth();
-  const registry = useRegistry();
   const jwt = session?.access_token ?? "";
   const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
-  const [activeDashboard, setActiveDashboard] = useState<Dashboard | null>(null);
-  const [tiles, setTiles] = useState<DashboardTile[]>([]);
-  const [results, setResults] = useState<Record<string, QueryResponse>>({});
-  const [chartConfigs, setChartConfigs] = useState<Record<string, ChartConfig>>({});
-  const [loading, setLoading] = useState(false);
-  const [tileErrors, setTileErrors] = useState<Record<string, string>>({});
-
-  // Share modal state
-  const [shareTarget, setShareTarget] = useState<Dashboard | null>(null);
-  const [editors, setEditors] = useState<DashboardEditor[]>([]);
-  const [newEditorId, setNewEditorId] = useState("");
-  const [editorLoading, setEditorLoading] = useState(false);
-
-  const { width: containerWidth, containerRef } = useContainerWidth({ initialWidth: 900 });
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeDashboardRef = useRef<Dashboard | null>(null);
-  activeDashboardRef.current = activeDashboard;
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -62,122 +36,28 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    listDashboards(jwt).then(setDashboards).catch(() => {});
+    listDashboards(jwt)
+      .then(setDashboards)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [jwt]);
 
-  async function openDashboard(d: Dashboard) {
-    setActiveDashboard(d);
-    setLoading(true);
-    setTileErrors({});
+  async function handleCreate() {
+    if (!newName.trim()) return;
+    setCreating(true);
     try {
-      const t = await listDashboardTiles(jwt, d.id);
-      setTiles(t);
-      const res: Record<string, QueryResponse> = {};
-      const configs: Record<string, ChartConfig> = {};
-      const errors: Record<string, string> = {};
-      await Promise.all(
-        t.map(async (tile) => {
-          try {
-            const r = await runSql(jwt, tile.connection_id, tile.sql);
-            res[tile.id] = r;
-            const rows = r.rows.map((row) => {
-              const obj: Record<string, unknown> = {};
-              r.columns.forEach((col, i) => { obj[col] = row[i]; });
-              return obj;
-            });
-            const savedConfig = tile.chart_config as ChartConfig;
-            configs[tile.id] = savedConfig?.type
-              ? savedConfig
-              : selectChartType(r.columns, rows, registry);
-          } catch (e) {
-            errors[tile.id] = e instanceof Error ? e.message : "Query failed";
-          }
-        })
-      );
-      setResults(res);
-      setChartConfigs(configs);
-      setTileErrors(errors);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const handleLayoutChange = useCallback(
-    (currentLayout: Layout) => {
-      const dash = activeDashboardRef.current;
-      if (!dash?.can_edit) return;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        updateDashboardLayout(
-          jwt,
-          dash.id,
-          currentLayout.map((l) => ({ id: l.i, x: l.x, y: l.y, w: l.w, h: l.h })),
-        ).catch(() => {});
-      }, 800);
-    },
-    [jwt],
-  );
-
-  async function handleChartTypeChange(tile: DashboardTile, newType: ChartType) {
-    const current = chartConfigs[tile.id] ?? { type: "table" };
-    const updated: ChartConfig = { ...current, type: newType };
-    // Optimistic update
-    setChartConfigs((prev) => ({ ...prev, [tile.id]: updated }));
-    // Persist to backend — only reachable when can_edit is true
-    try {
-      await updateTileConfig(jwt, tile.dashboard_id, tile.id, newType, updated);
+      const d = await createDashboard(jwt, newName.trim());
+      router.push(`/dashboard/${d.id}`);
     } catch {
-      // Roll back on failure
-      setChartConfigs((prev) => ({ ...prev, [tile.id]: current }));
+      setCreating(false);
     }
   }
 
-  async function handleDeleteTile(tile: DashboardTile) {
-    await deleteDashboardTile(jwt, tile.dashboard_id, tile.id);
-    setTiles((prev) => prev.filter((t) => t.id !== tile.id));
-  }
-
-  async function handleDeleteDashboard(d: Dashboard) {
-    await deleteDashboard(jwt, d.id);
+  async function handleDelete(d: Dashboard, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Delete "${d.name}"?`)) return;
+    await deleteDashboard(jwt, d.id).catch(() => {});
     setDashboards((prev) => prev.filter((x) => x.id !== d.id));
-    if (activeDashboard?.id === d.id) {
-      setActiveDashboard(null);
-      setTiles([]);
-    }
-  }
-
-  // Share modal helpers
-  async function openShareModal(d: Dashboard) {
-    setShareTarget(d);
-    setEditorLoading(true);
-    try {
-      const list = await listDashboardEditors(jwt, d.id);
-      setEditors(list);
-    } catch {
-      setEditors([]);
-    } finally {
-      setEditorLoading(false);
-    }
-  }
-
-  async function handleAddEditor() {
-    if (!shareTarget || !newEditorId.trim()) return;
-    setEditorLoading(true);
-    try {
-      const editor = await addDashboardEditor(jwt, shareTarget.id, newEditorId.trim());
-      setEditors((prev) => [...prev, editor]);
-      setNewEditorId("");
-    } catch { /* show nothing — user can retry */ }
-    finally { setEditorLoading(false); }
-  }
-
-  async function handleRemoveEditor(userId: string) {
-    if (!shareTarget) return;
-    setEditorLoading(true);
-    try {
-      await removeDashboardEditor(jwt, shareTarget.id, userId);
-      setEditors((prev) => prev.filter((e) => e.user_id !== userId));
-    } finally { setEditorLoading(false); }
   }
 
   if (!mounted || authLoading) {
@@ -190,310 +70,116 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const chartTypes = registry.all().map((d) => d.type);
-
-  const gridLayout = tiles.map((tile) => ({
-    i: tile.id,
-    x: tile.layout?.x ?? 0,
-    y: tile.layout?.y ?? 0,
-    w: tile.layout?.w ?? 6,
-    h: tile.layout?.h ?? 4,
-    minW: 3,
-    minH: 2,
-  }));
-
-  const canEdit = activeDashboard?.can_edit ?? false;
-
   return (
-    <main className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
+    <main className="min-h-screen bg-gray-950 text-gray-100">
       <Nav />
-      <div className="flex-1">
-        <div className="max-w-[1080px] mx-auto px-4 py-3 md:py-4 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 items-start">
-            {/* Sidebar */}
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Dashboards</p>
-              {dashboards.length === 0 && (
-                <p className="text-xs text-gray-600">
-                  No dashboards yet.{" "}
-                  <a href="/" className="text-indigo-400 hover:text-indigo-300 transition-colors">Run a query →</a>
-                </p>
-              )}
-              {dashboards.map((d) => (
-                <div
-                  key={d.id}
-                  className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 cursor-pointer transition-colors ${
-                    activeDashboard?.id === d.id
-                      ? "bg-indigo-600/20 border border-indigo-600/40"
-                      : "bg-gray-900 border border-gray-800 hover:border-gray-700"
-                  }`}
-                  onClick={() => openDashboard(d)}
-                >
-                  <span className="text-xs truncate flex-1 min-w-0">{d.name}</span>
-                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                    {d.is_owner && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openShareModal(d); }}
-                        className="text-gray-600 hover:text-indigo-400 text-xs transition-colors"
-                        aria-label="Share dashboard"
-                        title="Share"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                        </svg>
-                      </button>
-                    )}
-                    {d.is_owner && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteDashboard(d); }}
-                        className="text-gray-600 hover:text-red-400 text-xs transition-colors"
-                        aria-label="Delete dashboard"
-                      >
-                        ✕
-                      </button>
-                    )}
-                    {!d.is_owner && (
-                      <span className="text-[10px] text-indigo-400/70 font-medium">shared</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Grid canvas */}
-            <div>
-              {!activeDashboard && (
-                <p className="text-sm text-gray-600">Select a dashboard to view its charts.</p>
-              )}
-              {activeDashboard && loading && (
-                <p className="text-sm text-gray-500">Loading tiles…</p>
-              )}
-              {activeDashboard && !loading && tiles.length === 0 && (
-                <p className="text-sm text-gray-600">No tiles in this dashboard yet.</p>
-              )}
-
-              {activeDashboard && !loading && tiles.length > 0 && (
-                <div ref={containerRef}>
-                  <ResponsiveGridLayout
-                    className="layout"
-                    width={containerWidth}
-                    layouts={{ lg: gridLayout, md: gridLayout, sm: gridLayout }}
-                    breakpoints={{ lg: 1200, md: 768, sm: 480 }}
-                    cols={{ lg: 12, md: 10, sm: 6 }}
-                    rowHeight={100}
-                    margin={[8, 8] as const}
-                    dragConfig={{ enabled: canEdit, handle: ".drag-handle" }}
-                    resizeConfig={{ enabled: canEdit, handles: ["se"] as const }}
-                    onLayoutChange={canEdit ? handleLayoutChange : undefined}
-                  >
-                    {tiles.map((tile) => {
-                      const res = results[tile.id];
-                      const config = chartConfigs[tile.id] ?? { type: "table" };
-                      const ct = config.type as ChartType;
-                      return (
-                        <div
-                          key={tile.id}
-                          className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col"
-                        >
-                          {/* Header */}
-                          <div className={`drag-handle px-3 pt-2 pb-1.5 border-b border-gray-800/60 flex-shrink-0 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
-                            {/* Title row — full width */}
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm text-gray-100 font-medium leading-snug select-none line-clamp-2">{tile.question}</p>
-                              <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-                                <a
-                                  href={`/?query_id=${tile.saved_query_id}`}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  title="Open in editor"
-                                  className="w-5 h-5 flex items-center justify-center rounded text-gray-700 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
-                                >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                    <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                                  </svg>
-                                </a>
-                                {canEdit && (
-                                  <button
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={() => handleDeleteTile(tile)}
-                                    className="w-5 h-5 flex items-center justify-center rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 transition-colors"
-                                    aria-label="Remove tile"
-                                  >
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            {/* Controls row — chart switcher + theme dots + drag hint */}
-                            {canEdit && res && (
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center gap-1">
-                                    {chartTypes.map((t) => (
-                                      <button
-                                        key={t}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onClick={() => handleChartTypeChange(tile, t as ChartType)}
-                                        className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                                          ct === t ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"
-                                        }`}
-                                      >
-                                        {t}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  {ct !== "table" && (
-                                    <div onMouseDown={(e) => e.stopPropagation()}>
-                                      <ChartCustomizer
-                                        config={chartConfigs[tile.id] ?? { type: ct }}
-                                        columns={res.columns}
-                                        onChange={(updates) => {
-                                          const current = chartConfigs[tile.id] ?? { type: ct };
-                                          const updated = { ...current, ...updates } as import("@bi-tool/charts").ChartConfig;
-                                          setChartConfigs((prev) => ({ ...prev, [tile.id]: updated }));
-                                          updateTileConfig(jwt, tile.dashboard_id, tile.id, ct, updated as unknown as Record<string, unknown>).catch(() => {});
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                                {/* Explicit drag affordance */}
-                                <div className="text-gray-700 cursor-grab" title="Drag to move">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="9" cy="7" r="1.5" /><circle cx="15" cy="7" r="1.5" />
-                                    <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-                                    <circle cx="9" cy="17" r="1.5" /><circle cx="15" cy="17" r="1.5" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 overflow-auto p-2 min-h-0">
-                            {!res && (
-                              <div className="flex flex-col items-center justify-center h-full gap-2 py-6 text-center">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500 flex-shrink-0">
-                                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                                </svg>
-                                <p className="text-xs text-red-400 max-w-[180px] leading-relaxed">
-                                  {tileErrors[tile.id] ?? "Failed to load data."}
-                                </p>
-                                <a
-                                  href={`/?query_id=${tile.saved_query_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-                                >
-                                  Open in editor ↗
-                                </a>
-                              </div>
-                            )}
-
-                            {res && ct !== "table" && (
-                              <div className="h-full overflow-hidden rounded">
-                                <ChartView chartType={ct} columns={res.columns} rows={res.rows} config={config} />
-                              </div>
-                            )}
-
-                            {res && ct === "table" && (
-                              <table className="text-xs w-full">
-                                <thead>
-                                  <tr>
-                                    {res.columns.map((c) => (
-                                      <th key={c} className="text-left text-gray-500 pb-1 pr-3 font-medium whitespace-nowrap">{c}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {res.rows.slice(0, 20).map((row, i) => (
-                                    <tr key={i} className="border-t border-gray-800">
-                                      {row.map((cell, j) => (
-                                        <td key={j} className="py-1 pr-3 text-gray-300 whitespace-nowrap">{String(cell ?? "")}</td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </ResponsiveGridLayout>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Share modal */}
-      {shareTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setShareTarget(null)}
-        >
-          <div
-            className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md p-4 space-y-3"
-            onClick={(e) => e.stopPropagation()}
+      <div className="max-w-[1080px] mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-base font-semibold text-gray-100">Dashboards</h1>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 rounded-lg font-medium transition-colors"
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-100">Share &ldquo;{shareTarget.name}&rdquo;</h2>
-              <button onClick={() => setShareTarget(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
-            </div>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New dashboard
+          </button>
+        </div>
 
-            <p className="text-xs text-gray-500">
-              Editors can change chart types and resize tiles. Paste a user&apos;s ID to grant access.
-            </p>
-
-            {/* Add editor */}
+        {/* Inline create form */}
+        {showCreate && (
+          <div className="mb-6 p-4 bg-gray-900 border border-indigo-600/40 rounded-xl">
+            <p className="text-xs text-gray-400 mb-2">Dashboard name</p>
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-100 placeholder:text-gray-600 outline-none focus:border-indigo-500"
-                placeholder="User ID (UUID)"
-                value={newEditorId}
-                onChange={(e) => setNewEditorId(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAddEditor(); }}
+                autoFocus
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreate();
+                  if (e.key === "Escape") { setShowCreate(false); setNewName(""); }
+                }}
+                placeholder="e.g. Revenue Overview"
+                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 outline-none focus:border-indigo-500"
               />
               <button
-                onClick={handleAddEditor}
-                disabled={editorLoading || !newEditorId.trim()}
-                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded-md transition-colors"
+                onClick={handleCreate}
+                disabled={creating || !newName.trim()}
+                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-sm rounded-lg transition-colors font-medium"
               >
-                Add
+                {creating ? "Creating…" : "Create"}
+              </button>
+              <button
+                onClick={() => { setShowCreate(false); setNewName(""); }}
+                className="px-3 py-2 text-gray-500 hover:text-gray-300 text-sm transition-colors"
+              >
+                Cancel
               </button>
             </div>
-
-            {/* Editor list */}
-            <div className="space-y-2">
-              {editorLoading && editors.length === 0 && (
-                <p className="text-xs text-gray-600">Loading…</p>
-              )}
-              {!editorLoading && editors.length === 0 && (
-                <p className="text-xs text-gray-600">No editors yet. Only you can edit this dashboard.</p>
-              )}
-              {editors.map((e) => (
-                <div key={e.user_id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
-                  <span className="text-xs text-gray-300 font-mono truncate max-w-[280px]">{e.user_id}</span>
-                  <button
-                    onClick={() => handleRemoveEditor(e.user_id)}
-                    disabled={editorLoading}
-                    className="text-gray-600 hover:text-red-400 text-xs transition-colors flex-shrink-0 ml-2"
-                    aria-label="Remove editor"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-900 border border-gray-800 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && dashboards.length === 0 && (
+          <div className="text-center py-24">
+            <p className="text-gray-500 text-sm mb-4">No dashboards yet.</p>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors"
+            >
+              Create your first dashboard →
+            </button>
+          </div>
+        )}
+
+        {/* Card grid */}
+        {!loading && dashboards.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dashboards.map((d) => (
+              <div
+                key={d.id}
+                onClick={() => router.push(`/dashboard/${d.id}`)}
+                className="group relative cursor-pointer bg-gray-900 border border-gray-800 hover:border-indigo-600/50 rounded-xl p-4 transition-all hover:shadow-lg hover:shadow-indigo-950/30"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <h2 className="text-sm font-medium text-gray-100 leading-snug truncate flex-1">{d.name}</h2>
+                  {!d.is_owner && (
+                    <span className="text-[10px] text-indigo-400/80 font-medium px-1.5 py-0.5 bg-indigo-950/50 rounded flex-shrink-0">shared</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600">{relativeTime(d.created_at)}</p>
+
+                {/* Hover actions */}
+                {d.is_owner && (
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleDelete(d, e)}
+                      className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                      aria-label="Delete dashboard"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
