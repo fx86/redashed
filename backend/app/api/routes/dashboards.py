@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.deps import get_current_user
 from app.models.schemas import (
-    DashboardCreate, DashboardResponse,
+    DashboardCreate, DashboardRename, DashboardResponse,
     DashboardTileCreate, DashboardTileResponse,
     UpdateLayoutRequest, UpdateTileConfigRequest,
+    RenameTileRequest,
     DashboardEditorResponse, AddEditorRequest,
 )
 from app.services import local_db_service
@@ -20,6 +21,16 @@ def list_dashboards(user=Depends(get_current_user)):
 @router.post("", response_model=DashboardResponse)
 def create_dashboard(body: DashboardCreate, user=Depends(get_current_user)):
     row = local_db_service.insert_dashboard(user["user_id"], body.name)
+    return _to_dashboard(row, user["user_id"])
+
+
+@router.patch("/{dashboard_id}", response_model=DashboardResponse)
+def rename_dashboard(dashboard_id: str, body: DashboardRename, user=Depends(get_current_user)):
+    if not local_db_service.can_edit_dashboard(dashboard_id, user["user_id"]):
+        raise HTTPException(status_code=403, detail="Not authorized to edit this dashboard")
+    row = local_db_service.rename_dashboard(dashboard_id, body.name)
+    if not row:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
     return _to_dashboard(row, user["user_id"])
 
 
@@ -50,6 +61,16 @@ def create_tile(dashboard_id: str, body: DashboardTileCreate, user=Depends(get_c
         position=body.position,
         layout=body.layout.model_dump(),
     )
+    return _to_tile(row)
+
+
+@router.patch("/{dashboard_id}/tiles/{tile_id}", response_model=DashboardTileResponse)
+def rename_tile(dashboard_id: str, tile_id: str, body: RenameTileRequest, user=Depends(get_current_user)):
+    if not local_db_service.can_edit_dashboard(dashboard_id, user["user_id"]):
+        raise HTTPException(status_code=403, detail="Not authorized to edit this dashboard")
+    row = local_db_service.rename_tile(tile_id, dashboard_id, body.title)
+    if not row:
+        raise HTTPException(status_code=404, detail="Tile not found")
     return _to_tile(row)
 
 

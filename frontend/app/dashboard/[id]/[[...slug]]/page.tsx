@@ -13,6 +13,8 @@ import {
   listDashboardTiles,
   deleteDashboard,
   deleteDashboardTile,
+  renameDashboard,
+  renameTile,
   runSql,
   updateDashboardLayout,
   listDashboardEditors,
@@ -43,6 +45,12 @@ export default function DashboardViewPage() {
   const [tileErrors, setTileErrors] = useState<Record<string, string>>({});
   const [pageLoading, setPageLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+
+  // Inline title editing
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState("");
+  const [editingTileId, setEditingTileId] = useState<string | null>(null);
+  const [tileInput, setTileInput] = useState("");
 
   // Share modal
   const [shareOpen, setShareOpen] = useState(false);
@@ -188,6 +196,28 @@ export default function DashboardViewPage() {
     } finally { setEditorLoading(false); }
   }
 
+  async function handleSaveDashboardTitle() {
+    const name = titleInput.trim();
+    setEditingTitle(false);
+    if (!name || name === dashboard?.name) return;
+    try {
+      const updated = await renameDashboard(jwt, dashboardId, name);
+      setDashboard((prev) => prev ? { ...prev, name: updated.name } : prev);
+    } catch {}
+  }
+
+  async function handleSaveTileTitle(tileId: string) {
+    const title = tileInput.trim();
+    setEditingTileId(null);
+    if (!title) return;
+    const tile = tiles.find((t) => t.id === tileId);
+    if (!tile || title === tile.question) return;
+    try {
+      const updated = await renameTile(jwt, dashboardId, tileId, title);
+      setTiles((prev) => prev.map((t) => t.id === tileId ? { ...t, question: updated.question } : t));
+    } catch {}
+  }
+
   if (!mounted || authLoading || pageLoading) {
     return (
       <main className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -227,7 +257,27 @@ export default function DashboardViewPage() {
             Dashboards
           </a>
           <span className="text-gray-700 text-xs">/</span>
-          <h1 className="text-sm font-medium text-gray-100 truncate flex-1">{dashboard.name}</h1>
+          {editingTitle ? (
+            <input
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onBlur={handleSaveDashboardTitle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveDashboardTitle();
+                if (e.key === "Escape") { setEditingTitle(false); setTitleInput(dashboard.name); }
+              }}
+              autoFocus
+              className="text-sm font-medium text-gray-100 bg-transparent border-b border-indigo-500 outline-none flex-1 min-w-0"
+            />
+          ) : (
+            <h1
+              className={`text-sm font-medium text-gray-100 truncate flex-1 ${dashboard.can_edit ? "cursor-pointer hover:text-indigo-300 transition-colors" : ""}`}
+              onClick={() => { if (dashboard.can_edit) { setTitleInput(dashboard.name); setEditingTitle(true); } }}
+              title={dashboard.can_edit ? "Click to rename" : undefined}
+            >
+              {dashboard.name}
+            </h1>
+          )}
 
           <div className="flex items-center gap-2 flex-shrink-0">
             {!dashboard.is_owner && (
@@ -312,9 +362,23 @@ export default function DashboardViewPage() {
                         style={{ height: tileH }}
                       >
                         <div className="group px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2">
-                          <a href={`/?query_id=${tile.saved_query_id}`} className="text-sm text-gray-100 font-medium leading-snug truncate flex-1 hover:text-indigo-300 transition-colors">
-                            {tile.question}
-                          </a>
+                          {editingTileId === tile.id ? (
+                            <input
+                              value={tileInput}
+                              onChange={(e) => setTileInput(e.target.value)}
+                              onBlur={() => handleSaveTileTitle(tile.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveTileTitle(tile.id);
+                                if (e.key === "Escape") setEditingTileId(null);
+                              }}
+                              autoFocus
+                              className="text-sm font-medium text-gray-100 bg-transparent border-b border-indigo-500 outline-none flex-1 min-w-0"
+                            />
+                          ) : (
+                            <a href={`/?query_id=${tile.saved_query_id}`} className="text-sm text-gray-100 font-medium leading-snug truncate flex-1 hover:text-indigo-300 transition-colors">
+                              {tile.question}
+                            </a>
+                          )}
                           <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             <a href={`/?query_id=${tile.saved_query_id}`} title="Open query" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors">
                               <ExternalLinkIcon />
@@ -370,13 +434,32 @@ export default function DashboardViewPage() {
                   >
                     {/* Tile header */}
                     <div className={`group drag-handle px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
-                      <a
-                        href={`/?query_id=${tile.saved_query_id}`}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="text-sm text-gray-100 font-medium leading-snug select-none truncate flex-1 hover:text-indigo-300 transition-colors"
-                      >
-                        {tile.question}
-                      </a>
+                      {editingTileId === tile.id ? (
+                        <input
+                          value={tileInput}
+                          onChange={(e) => setTileInput(e.target.value)}
+                          onBlur={() => handleSaveTileTitle(tile.id)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveTileTitle(tile.id);
+                            if (e.key === "Escape") setEditingTileId(null);
+                          }}
+                          autoFocus
+                          className="text-sm font-medium text-gray-100 bg-transparent border-b border-indigo-500 outline-none flex-1 min-w-0"
+                        />
+                      ) : (
+                        <a
+                          href={`/?query_id=${tile.saved_query_id}`}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            if (canEdit) { e.preventDefault(); setTileInput(tile.question); setEditingTileId(tile.id); }
+                          }}
+                          className={`text-sm text-gray-100 font-medium leading-snug select-none truncate flex-1 transition-colors ${canEdit ? "cursor-text hover:text-indigo-300" : "hover:text-indigo-300"}`}
+                          title={canEdit ? "Click to rename" : undefined}
+                        >
+                          {tile.question}
+                        </a>
+                      )}
                       <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a
                           href={`/?query_id=${tile.saved_query_id}`}

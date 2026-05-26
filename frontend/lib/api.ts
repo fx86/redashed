@@ -240,6 +240,15 @@ export async function createDashboard(jwt: string, name: string): Promise<Dashbo
   return handleResponse<Dashboard>(res);
 }
 
+export async function renameDashboard(jwt: string, dashboardId: string, name: string): Promise<Dashboard> {
+  const res = await fetch(`${BASE}/dashboards/${dashboardId}`, {
+    method: "PATCH",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ name }),
+  });
+  return handleResponse<Dashboard>(res);
+}
+
 export async function deleteDashboard(jwt: string, id: string): Promise<void> {
   await fetch(`${BASE}/dashboards/${id}`, { method: "DELETE", headers: authHeaders(jwt) });
 }
@@ -264,6 +273,15 @@ export async function createDashboardTile(
     method: "POST",
     headers: authHeaders(jwt),
     body: JSON.stringify(body),
+  });
+  return handleResponse<DashboardTile>(res);
+}
+
+export async function renameTile(jwt: string, dashboardId: string, tileId: string, title: string): Promise<DashboardTile> {
+  const res = await fetch(`${BASE}/dashboards/${dashboardId}/tiles/${tileId}`, {
+    method: "PATCH",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ title }),
   });
   return handleResponse<DashboardTile>(res);
 }

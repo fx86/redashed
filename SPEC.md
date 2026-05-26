@@ -46,11 +46,11 @@
 > Matches prototype: horizontal bar, not sidebar.
 
 - [x] Logo + product name left-aligned
-- [ ] Nav links: Dashboards · Queries · Alerts · Settings (Alerts and Settings links missing)
+- [x] Nav links: Dashboards · Queries · Alerts · Settings
 - [x] Active link has indigo bottom border indicator
 - [ ] Global search (opens query search, not a separate page)
 - [x] `New query` link → opens editor (deviation: labelled "New query", not a `+` button; opens in AI mode)
-- [ ] User avatar top right → dropdown: Profile, Settings, Sign out (sign out button exists but not a dropdown)
+- [x] User avatar top right → dropdown: Settings, Sign out
 - [ ] Nav is responsive: on mobile, collapses to hamburger menu
 
 ---
@@ -70,14 +70,14 @@
 - [ ] Empty state: prompt to create first dashboard or connect a data source
 
 ### 3.2 Dashboard View
-- [ ] Dashboard title — inline editable (click to edit)
+- [x] Dashboard title — inline editable (click to edit; can_edit users only)
 - [ ] Last updated timestamp + auto-refresh interval badge
 - [x] Grid of widgets (2-column at desktop, 1-column on mobile)
 - [ ] Widget types: chart, table, KPI number, text/markdown (chart and KPI done; table and text/markdown not yet)
 - [x] `Add widget` → tiles added via Queries list → "Add to dashboard" flow
 
 ### 3.3 Widget
-- [ ] Widget title (editable)
+- [x] Widget title (editable — click in edit mode; updates saved_query.question)
 - [x] Chart rendered via `@bi-tool/charts` (Observable Plot wrapper)
 - [x] Chart type auto-selected from result shape; creator/editors can override — persisted to DB
 - [x] Resize widget (drag handle) — creator/editors only; layout changes persisted
@@ -133,7 +133,7 @@
 - [x] "Generate SQL" button → triggers AI generation flow
 - [ ] AI generation states:
   - [x] Loading state during generation
-  - [ ] Step labels update during generation (schema → tables → SQL)
+  - [ ] Step labels update during generation (schema → tables → SQL) — deferred
   - [x] Generated SQL appears in the SQL editor pane (editable)
 - [ ] AI chip label: "AI generates SQL · you review & run" — always visible in AI mode
 - [x] Switching to SQL mode hides NL input but keeps generated SQL
@@ -154,7 +154,7 @@
 - [x] Results view toggle: Table | Chart
 - [x] Chart view uses `@bi-tool/charts` — auto-selects type from result shape
 - [x] **Chart type selector in query editor** (ChartCustomizer component) — persisted with saved query
-- [ ] Export CSV button
+- [x] Export CSV + PNG buttons
 - [x] "Add to dashboard" button → dashboard picker modal
 - [x] Error state: warehouse error shown inline, SQL editor stays editable
 
@@ -168,7 +168,7 @@
 - [ ] Views are persisted alongside the saved query; no separate query object created
 
 ### 4.6 Query Persistence
-- [ ] Unsaved changes indicator (dot on Save button)
+- [x] Unsaved changes indicator (amber dot on Save button)
 - [x] Auto-save draft (local localStorage) — restored on next visit to same connection
 - [x] Named save → server, appears in Queries list
 - [ ] Query versioning — keep last 10 versions, accessible via history dropdown

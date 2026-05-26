@@ -175,6 +175,17 @@ def list_dashboards(user_id: str) -> list[dict]:
             return [dict(r) for r in cur.fetchall()]
 
 
+def rename_dashboard(dashboard_id: str, name: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "UPDATE dashboards SET name = %s WHERE id = %s RETURNING id, user_id, name, created_at",
+                (name, dashboard_id),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
 def delete_dashboard(dashboard_id: str, user_id: str) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
@@ -296,6 +307,22 @@ def update_tile_config(tile_id: str, dashboard_id: str, chart_type: str, chart_c
             cur.execute(_TILE_SELECT + " WHERE dt.id = %s", (tile_id,))
             row = cur.fetchone()
             return _coerce_tile(dict(row)) if row else None
+
+
+def rename_tile(tile_id: str, dashboard_id: str, title: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT saved_query_id FROM dashboard_tiles WHERE id = %s AND dashboard_id = %s",
+                (tile_id, dashboard_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            cur.execute("UPDATE saved_queries SET question = %s WHERE id = %s", (title, row["saved_query_id"]))
+            cur.execute(_TILE_SELECT + " WHERE dt.id = %s", (tile_id,))
+            result = cur.fetchone()
+            return _coerce_tile(dict(result)) if result else None
 
 
 def delete_tile(tile_id: str) -> None:

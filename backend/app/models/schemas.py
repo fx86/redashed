@@ -134,6 +134,14 @@ class AddEditorRequest(BaseModel):
     user_id: str
 
 
+class DashboardRename(BaseModel):
+    name: str
+
+
+class RenameTileRequest(BaseModel):
+    title: str
+
+
 class UpdateTileConfigRequest(BaseModel):
     chart_type: str
     chart_config: dict = {}
