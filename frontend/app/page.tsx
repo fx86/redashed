@@ -20,6 +20,7 @@ import type { SavedConnection, TableInfo, QueryResponse, Annotation, Upload } fr
 import { selectChartType, useRegistry } from "@bi-tool/charts";
 import type { ChartType, ChartConfig } from "@bi-tool/charts";
 import Nav from "@/components/Nav";
+import { downloadCSV, downloadChartImage, slugFilename } from "@/lib/export";
 import { useVoiceInput } from "@/lib/useVoiceInput";
 import SavedConnectionForm from "@/components/SavedConnectionForm";
 import FileUpload from "@/components/FileUpload";
@@ -78,6 +79,7 @@ export default function Home() {
 
   const registry = useRegistry();
   const jwt = session?.access_token ?? "";
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const sqlVoice = useVoiceInput((t) =>
     setSqlInput((prev) => (prev.trim() ? `${prev}\n${t}` : t))
@@ -649,7 +651,7 @@ export default function Home() {
                       </div>
 
                       {chartType !== "table" && (
-                        <div className="border border-gray-800 rounded-lg overflow-hidden h-80">
+                        <div ref={chartContainerRef} className="border border-gray-800 rounded-lg overflow-hidden h-80">
                           <ChartView
                             chartType={chartType}
                             columns={result.columns}
@@ -661,7 +663,7 @@ export default function Home() {
 
                       <ResultsTable result={result} />
 
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 flex-wrap items-center">
                         <button
                           onClick={handleSaveQuery}
                           disabled={saved}
@@ -683,6 +685,30 @@ export default function Home() {
                           </svg>
                           Add to dashboard
                         </button>
+
+                        <div className="flex items-center gap-1 ml-auto">
+                          <button
+                            onClick={() => downloadCSV(result.columns, result.rows, slugFilename(lastQuestion, "csv"))}
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors"
+                            title="Download CSV"
+                          >
+                            <DownloadIcon />
+                            CSV
+                          </button>
+                          {chartType !== "table" && (
+                            <button
+                              onClick={() => {
+                                if (chartContainerRef.current)
+                                  downloadChartImage(chartContainerRef.current, slugFilename(lastQuestion, "png"));
+                              }}
+                              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors"
+                              title="Download chart as PNG"
+                            >
+                              <DownloadIcon />
+                              PNG
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -738,6 +764,15 @@ function UploadIcon() {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v13M5 14l7 7 7-7" />
+      <line x1="3" y1="21" x2="21" y2="21" />
     </svg>
   );
 }
