@@ -14,12 +14,13 @@ import {
   listAnnotations,
   upsertAnnotation,
 } from "@/lib/api";
-import type { SavedConnection, TableInfo, QueryResponse, Annotation } from "@/lib/api";
+import type { SavedConnection, TableInfo, QueryResponse, Annotation, Upload } from "@/lib/api";
 import { selectChartType, useRegistry } from "@bi-tool/charts";
 import type { ChartType, ChartConfig } from "@bi-tool/charts";
 import Nav from "@/components/Nav";
 import { useVoiceInput } from "@/lib/useVoiceInput";
 import SavedConnectionForm from "@/components/SavedConnectionForm";
+import FileUpload from "@/components/FileUpload";
 import SchemaPanel from "@/components/SchemaPanel";
 import QueryInput from "@/components/QueryInput";
 import ResultsTable from "@/components/ResultsTable";
@@ -58,6 +59,7 @@ export default function Home() {
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [lastQuestion, setLastQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +114,8 @@ export default function Home() {
     const connectionId = params?.get("connection_id") ?? null;
 
     listUserConnections(jwt)
-      .then(async (conns) => {
+      .then(async (allConns) => {
+        const conns = allConns.filter((c) => c.db_type !== "flat_file");
         setConnections(conns);
         if (conns.length === 0) return;
 
@@ -315,6 +318,22 @@ export default function Home() {
   }
   handleSaveQueryRef.current = handleSaveQuery;
 
+  async function handleUploadSuccess(upload: Upload) {
+    if (!upload.connection_id) return;
+    setShowUploadPanel(false);
+    const flatFileConn: SavedConnection = {
+      id: upload.connection_id,
+      name: "Uploaded Files",
+      db_type: "flat_file",
+      host: "",
+      port: 0,
+      database: "",
+      db_user: "",
+      created_at: new Date().toISOString(),
+    };
+    await handleSelectConnection(flatFileConn);
+  }
+
   async function handleAnnotate(body: { table_schema: string; table_name: string; column_name?: string | null; description: string }) {
     if (!activeConnection) return;
     const ann = await upsertAnnotation(jwt, activeConnection.id, body);
@@ -396,55 +415,82 @@ export default function Home() {
           )}
 
           {step === "connections" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-200">Connections</h2>
-                <button
-                  onClick={() => { setShowAddForm(true); setError(null); }}
-                  className="text-xs px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors"
-                >
-                  + Add
-                </button>
+            <div className="space-y-4">
+              {/* Upload entry point — no connection needed */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm font-semibold text-gray-200">Upload a file</h2>
+                  {showUploadPanel && (
+                    <button onClick={() => setShowUploadPanel(false)} className="text-xs text-gray-600 hover:text-gray-400">✕</button>
+                  )}
+                </div>
+                {showUploadPanel ? (
+                  <FileUpload jwt={jwt} onUpload={handleUploadSuccess} />
+                ) : (
+                  <button
+                    onClick={() => { setShowUploadPanel(true); setShowAddForm(false); setError(null); }}
+                    className="w-full flex items-center gap-3 border border-dashed border-gray-700 hover:border-indigo-600 hover:bg-indigo-950/20 rounded-lg px-4 py-3.5 text-left transition-colors group"
+                  >
+                    <UploadIcon />
+                    <div>
+                      <p className="text-sm text-gray-300 group-hover:text-gray-100 transition-colors">Drop a CSV, TSV, or delimited file</p>
+                      <p className="text-xs text-gray-600">Comma, tab, pipe, semicolon, or custom separator · queryable immediately</p>
+                    </div>
+                  </button>
+                )}
               </div>
 
-              {showAddForm && (
-                <SavedConnectionForm
-                  onSave={handleAddConnection}
-                  onCancel={() => { setShowAddForm(false); setError(null); }}
-                  loading={loading}
-                />
-              )}
-
-              {connections.length === 0 && !showAddForm && (
-                <p className="text-sm text-gray-500">No connections yet. Add one to get started.</p>
-              )}
-
-              <div className="space-y-1.5">
-                {connections.map((conn) => (
-                  <div
-                    key={conn.id}
-                    className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5"
+              {/* Warehouse connections */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm font-semibold text-gray-200">Warehouse connections</h2>
+                  <button
+                    onClick={() => { setShowAddForm(true); setShowUploadPanel(false); setError(null); }}
+                    className="text-xs px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors"
                   >
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-medium">{conn.name}</p>
-                        <span className="text-[10px] text-gray-600 bg-gray-800 border border-gray-700 rounded px-1 leading-4">
-                          {conn.db_type === "postgres" ? "PG" : conn.db_type === "snowflake" ? "SF" : (conn.db_type ?? "DB").slice(0, 3).toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        {conn.host}:{conn.port} / {conn.database}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleSelectConnection(conn)}
-                      disabled={loading}
-                      className="text-xs px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                    + Add
+                  </button>
+                </div>
+
+                {showAddForm && (
+                  <SavedConnectionForm
+                    onSave={handleAddConnection}
+                    onCancel={() => { setShowAddForm(false); setError(null); }}
+                    loading={loading}
+                  />
+                )}
+
+                {connections.length === 0 && !showAddForm && (
+                  <p className="text-sm text-gray-500">No warehouse connections yet.</p>
+                )}
+
+                <div className="space-y-1.5">
+                  {connections.map((conn) => (
+                    <div
+                      key={conn.id}
+                      className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5"
                     >
-                      {loading ? "Connecting…" : "Connect"}
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium">{conn.name}</p>
+                          <span className="text-[10px] text-gray-600 bg-gray-800 border border-gray-700 rounded px-1 leading-4">
+                            {conn.db_type === "postgres" ? "PG" : conn.db_type === "snowflake" ? "SF" : (conn.db_type ?? "DB").slice(0, 3).toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {conn.host}:{conn.port} / {conn.database}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleSelectConnection(conn)}
+                        disabled={loading}
+                        className="text-xs px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                      >
+                        {loading ? "Connecting…" : "Connect"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -460,14 +506,23 @@ export default function Home() {
                   <span className="text-gray-600 hover:text-gray-400">Connections</span>
                 </button>
                 <span className="text-gray-800">/</span>
-                <p className="text-xs text-gray-400 flex items-center gap-1.5">
-                  <span className="text-gray-200 font-medium">{activeConnection.name}</span>
-                  <span className="text-[10px] text-gray-600 bg-gray-800 border border-gray-700 rounded px-1 leading-4">
-                    {activeConnection.db_type === "postgres" ? "PG" : activeConnection.db_type === "snowflake" ? "SF" : (activeConnection.db_type ?? "DB").slice(0, 3).toUpperCase()}
-                  </span>
-                  <span className="text-gray-700">·</span>
-                  <span>{activeConnection.database}</span>
-                </p>
+                {activeConnection.db_type === "flat_file" ? (
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                    <span className="text-gray-200 font-medium">Uploaded Files</span>
+                    <span className="text-[10px] text-emerald-600 bg-emerald-950/40 border border-emerald-900 rounded px-1 leading-4">flat file</span>
+                    <span className="text-gray-700">·</span>
+                    <span>{schema.length} table{schema.length !== 1 ? "s" : ""}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                    <span className="text-gray-200 font-medium">{activeConnection.name}</span>
+                    <span className="text-[10px] text-gray-600 bg-gray-800 border border-gray-700 rounded px-1 leading-4">
+                      {activeConnection.db_type === "postgres" ? "PG" : activeConnection.db_type === "snowflake" ? "SF" : (activeConnection.db_type ?? "DB").slice(0, 3).toUpperCase()}
+                    </span>
+                    <span className="text-gray-700">·</span>
+                    <span>{activeConnection.database}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3">
@@ -661,6 +716,16 @@ function SqlMicIcon() {
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="23" />
       <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-600 flex-shrink-0">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   );
 }

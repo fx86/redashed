@@ -51,6 +51,7 @@ export default function SavedConnectionForm({ onSave, onCancel, loading }: Props
     name: "", db_type: "postgres", host: "localhost", port: 5432, database: "", db_user: "", password: "",
   });
   const [sfExtra, setSfExtra] = useState<SnowflakeExtra>({ warehouse: "", role: "", schema_name: "PUBLIC" });
+  const [pgSchema, setPgSchema] = useState("");
 
   function pickType(t: DbType) {
     if (!t.enabled) return;
@@ -75,6 +76,8 @@ export default function SavedConnectionForm({ onSave, onCancel, loading }: Props
         role: sfExtra.role || undefined,
         schema_name: sfExtra.schema_name || "PUBLIC",
       };
+    } else if (pgSchema.trim()) {
+      body.extra_config = { schema: pgSchema.trim() };
     }
     onSave(body);
   }
@@ -145,7 +148,10 @@ export default function SavedConnectionForm({ onSave, onCancel, loading }: Props
               <Field label="Host" value={form.host} onChange={(v) => set("host", v)} />
               <Field label="Port" value={String(form.port)} onChange={(v) => set("port", parseInt(v) || selectedType.port)} type="number" />
             </div>
-            <Field label="Database" value={form.database} onChange={(v) => set("database", v)} required />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Database" value={form.database} onChange={(v) => set("database", v)} required />
+              <Field label="Schema" value={pgSchema} onChange={setPgSchema} placeholder="Optional (e.g. public)" hint="Leave blank to see all schemas" />
+            </div>
             <Field label="User" value={form.db_user} onChange={(v) => set("db_user", v)} required />
             <Field label="Password" value={form.password} onChange={(v) => set("password", v)} type="password" />
           </>

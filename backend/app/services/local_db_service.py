@@ -433,3 +433,92 @@ def delete_annotation(annotation_id: str, user_id: str) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM schema_annotations WHERE id = %s AND user_id = %s", (annotation_id, user_id))
+
+
+# ── Uploaded files ─────────────────────────────────────────────────────────────
+
+def get_or_create_flatfile_connection(user_id: str, schema_name: str) -> str:
+    """Return the UUID of the user's flat_file connection, creating it if needed."""
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id FROM user_connections WHERE user_id = %s AND db_type = 'flat_file' LIMIT 1",
+                (user_id,),
+            )
+            row = cur.fetchone()
+            if row:
+                return str(row["id"])
+            cur.execute(
+                """
+                INSERT INTO user_connections (user_id, name, db_type, extra_config)
+                VALUES (%s, 'Uploaded Files', 'flat_file', %s)
+                RETURNING id
+                """,
+                (user_id, json.dumps({"uploads_schema": schema_name})),
+            )
+            return str(cur.fetchone()["id"])
+
+
+def insert_upload_record(
+    user_id: str,
+    original_filename: str,
+    table_name: str,
+    schema_name: str,
+    separator: str,
+    row_count: int,
+    col_count: int,
+) -> dict:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO uploaded_files
+                    (user_id, original_filename, table_name, schema_name, separator, row_count, col_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, user_id, original_filename, table_name, schema_name,
+                          separator, row_count, col_count, created_at, expires_at
+                """,
+                (user_id, original_filename, table_name, schema_name, separator, row_count, col_count),
+            )
+            return dict(cur.fetchone())
+
+
+def list_uploads(user_id: str) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, user_id, original_filename, table_name, schema_name,
+                       separator, row_count, col_count, created_at, expires_at
+                FROM uploaded_files
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                """,
+                (user_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def get_upload(upload_id: str, user_id: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, user_id, original_filename, table_name, schema_name,
+                       separator, row_count, col_count, created_at, expires_at
+                FROM uploaded_files
+                WHERE id = %s AND user_id = %s
+                """,
+                (upload_id, user_id),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
+def delete_upload_record(upload_id: str, user_id: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM uploaded_files WHERE id = %s AND user_id = %s",
+                (upload_id, user_id),
+            )

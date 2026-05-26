@@ -68,6 +68,19 @@ def list_connections(user=Depends(get_current_user)):
 @router.get("/{connection_id}/schema", response_model=SchemaResponse)
 def get_schema(connection_id: str, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
+    if row.get("db_type") == "flat_file":
+        from app.services import upload_service
+        from app.models.schemas import TableInfo, ColumnInfo
+        raw = upload_service.get_upload_tables(user["user_id"])
+        tables = [
+            TableInfo(
+                name=t["name"],
+                schema=t["schema"],
+                columns=[ColumnInfo(name=c["name"], type=c["type"], nullable=c["nullable"]) for c in t["columns"]],
+            )
+            for t in raw
+        ]
+        return SchemaResponse(tables=tables)
     params = _params_from_row(row)
     tables = connection_service.test_and_introspect(params)
     return SchemaResponse(tables=tables)
@@ -76,8 +89,27 @@ def get_schema(connection_id: str, user=Depends(get_current_user)):
 @router.post("/{connection_id}/query", response_model=QueryResponse)
 def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
-    params = _params_from_row(row)
     try:
+        if row.get("db_type") == "flat_file":
+            from app.services import upload_service
+            from app.models.schemas import TableInfo, ColumnInfo
+            raw = upload_service.get_upload_tables(user["user_id"])
+            tables = [
+                TableInfo(
+                    name=t["name"],
+                    schema=t["schema"],
+                    columns=[ColumnInfo(name=c["name"], type=c["type"], nullable=c["nullable"]) for c in t["columns"]],
+                )
+                for t in raw
+            ]
+            annotations = local_db_service.list_annotations(user["user_id"], connection_id)
+            sql = ai_service.generate_sql(body.question, tables, annotations)
+            if sql.startswith("-- Cannot answer"):
+                raise HTTPException(status_code=422, detail=sql)
+            columns, result_rows, elapsed_ms = upload_service.execute_upload_sql(user["user_id"], sql)
+            return QueryResponse(sql=sql, columns=columns, rows=result_rows, row_count=len(result_rows), execution_time_ms=elapsed_ms)
+
+        params = _params_from_row(row)
         tables = connection_service.test_and_introspect(params)
         annotations = local_db_service.list_annotations(user["user_id"], connection_id)
         sql = ai_service.generate_sql(body.question, tables, annotations)
@@ -96,8 +128,12 @@ def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user
 @router.post("/{connection_id}/run-sql", response_model=QueryResponse)
 def run_sql(connection_id: str, body: RunSqlRequest, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
-    params = _params_from_row(row)
     try:
+        if row.get("db_type") == "flat_file":
+            from app.services import upload_service
+            columns, result_rows, elapsed_ms = upload_service.execute_upload_sql(user["user_id"], body.sql)
+            return QueryResponse(sql=body.sql, columns=columns, rows=result_rows, row_count=len(result_rows), execution_time_ms=elapsed_ms)
+        params = _params_from_row(row)
         columns, result_rows, elapsed_ms = query_service.execute_select(params, body.sql)
         return QueryResponse(sql=body.sql, columns=columns, rows=result_rows, row_count=len(result_rows), execution_time_ms=elapsed_ms)
     except ValueError as e:

@@ -20,9 +20,9 @@
 
 ### 1.1 Sign In
 - [ ] Email + password sign in
-- [ ] SSO (Google OAuth) button — deferred, placeholder only for now
+- [x] SSO (Google OAuth) — working as primary auth method (deviation: spec said placeholder only; Google OAuth is the live auth flow)
 - [ ] "Forgot password" flow — email reset link
-- [ ] Redirect to dashboard after sign in
+- [x] Redirect to query editor after sign in
 - [ ] Show workspace name in nav after sign in
 
 ### 1.2 Sign Up
@@ -45,12 +45,12 @@
 
 > Matches prototype: horizontal bar, not sidebar.
 
-- [ ] Logo + product name left-aligned
-- [ ] Nav links: Dashboards · Queries · Alerts · Settings
-- [ ] Active link has indigo bottom border indicator
+- [x] Logo + product name left-aligned
+- [ ] Nav links: Dashboards · Queries · Alerts · Settings (Alerts and Settings links missing)
+- [x] Active link has indigo bottom border indicator
 - [ ] Global search (opens query search, not a separate page)
-- [ ] `+ New query` button → opens editor in AI mode, blank state
-- [ ] User avatar top right → dropdown: Profile, Settings, Sign out
+- [x] `New query` link → opens editor (deviation: labelled "New query", not a `+` button; opens in AI mode)
+- [ ] User avatar top right → dropdown: Profile, Settings, Sign out (sign out button exists but not a dropdown)
 - [ ] Nav is responsive: on mobile, collapses to hamburger menu
 
 ---
@@ -60,25 +60,25 @@
 > Prototype reference: "Dashboards" tab → Space Ops dashboard
 
 ### 3.1 Dashboard List Page
-- [ ] Dedicated `/dashboards` route — full-page card grid of all dashboards the user owns or has been shared
-- [ ] Each card shows: dashboard name, tile count, last updated, owner avatar (if shared to current user)
-- [ ] Clicking a card opens the dashboard in full-page view (no sidebar, no nav chrome — focus mode)
+- [x] `/dashboard` route — full-page card grid (deviation: route is `/dashboard` not `/dashboards`)
+- [ ] Each card shows: dashboard name, tile count, last updated, owner avatar (name + last updated shown; tile count and avatar not yet)
+- [x] Clicking a card opens the dashboard in full-page view
 - [ ] Dashboard full-page view will incorporate filter bar in future (§3.6); layout must reserve space for it
-- [ ] Create new dashboard button — name-only modal to start, tiles added after creation
+- [x] Create new dashboard button — name-only modal, tiles added after
 - [ ] Favourite/star a dashboard (starred dashboards appear at top of list)
-- [ ] Delete dashboard — confirm modal; owner only
+- [x] Delete dashboard — confirm modal; owner only
 - [ ] Empty state: prompt to create first dashboard or connect a data source
 
 ### 3.2 Dashboard View
 - [ ] Dashboard title — inline editable (click to edit)
 - [ ] Last updated timestamp + auto-refresh interval badge
-- [ ] Grid of widgets (2-column at desktop, 1-column on mobile)
-- [ ] Widget types: chart, table, KPI number, text/markdown
-- [ ] `Add widget` button → query picker → select result column mapping
+- [x] Grid of widgets (2-column at desktop, 1-column on mobile)
+- [ ] Widget types: chart, table, KPI number, text/markdown (chart and KPI done; table and text/markdown not yet)
+- [x] `Add widget` → tiles added via Queries list → "Add to dashboard" flow
 
 ### 3.3 Widget
 - [ ] Widget title (editable)
-- [ ] Chart rendered via `@bi-tool/charts` (Observable Plot wrapper)
+- [x] Chart rendered via `@bi-tool/charts` (Observable Plot wrapper)
 - [x] Chart type auto-selected from result shape; creator/editors can override — persisted to DB
 - [x] Resize widget (drag handle) — creator/editors only; layout changes persisted
 - [x] Remove widget from dashboard — creator/editors only
@@ -112,51 +112,51 @@
 > Prototype reference: "Query editor" tab. This is the core product surface.
 
 ### 4.1 Editor Layout
-- [ ] Query title — inline editable
-- [ ] Mode toggle pill: `Write SQL` | `Ask AI` (see §4.2 and §4.3)
-- [ ] Connection selector dropdown — shows user's warehouse connections
-- [ ] SQL editor pane (always visible and editable regardless of mode)
-- [ ] Run button
-- [ ] Results pane below editor
-- [ ] Save button — saves query with current SQL and title
+- [x] Query title — inline editable
+- [x] Mode toggle pill: `Write SQL` | `Ask AI`
+- [x] Connection selector dropdown — shows user's warehouse connections
+- [x] SQL editor pane (always visible and editable regardless of mode)
+- [x] Run button
+- [x] Results pane below editor
+- [x] Save button — saves query with current SQL and title
 - [ ] Share button — generates read-only link to query
 
 ### 4.2 Write SQL Mode
-- [ ] Full-width SQL textarea with monospace font, syntax colour
-- [ ] SQL is editable directly
-- [ ] No NL input shown
-- [ ] Switching from AI mode → SQL mode preserves whatever SQL is in the pane
+- [x] Full-width SQL textarea with monospace font
+- [x] SQL is editable directly
+- [x] No NL input shown in SQL mode
+- [x] Switching from AI mode → SQL mode preserves SQL in pane
 
 ### 4.3 Ask AI Mode
-- [ ] Natural language text input shown above SQL editor
-- [ ] Suggested prompt chips below input (pulled from query history)
-- [ ] "Generate SQL" button → triggers AI generation flow
+- [x] Natural language text input shown above SQL editor
+- [x] Suggested prompt chips below input
+- [x] "Generate SQL" button → triggers AI generation flow
 - [ ] AI generation states:
-  - [ ] "Reading schema context…" skeleton loading
+  - [x] Loading state during generation
   - [ ] Step labels update during generation (schema → tables → SQL)
-  - [ ] Generated SQL appears in the SQL editor pane (editable)
+  - [x] Generated SQL appears in the SQL editor pane (editable)
 - [ ] AI chip label: "AI generates SQL · you review & run" — always visible in AI mode
-- [ ] Switching to SQL mode hides NL input but keeps generated SQL
+- [x] Switching to SQL mode hides NL input but keeps generated SQL
 - [ ] Follow-up questions chips appear after results load
 
 ### 4.4 Pre-Run
 - [ ] Show estimated scan size (bytes) before run if warehouse supports it
 - [ ] Row limit warning if result will exceed configured limit
-- [ ] SQL is shown to user before execution — **no silent auto-run ever**
-- [ ] Read-only enforcement: reject any non-SELECT before sending to warehouse
+- [x] SQL is shown to user before execution — no silent auto-run
+- [x] Read-only enforcement: backend rejects any non-SELECT
 
 ### 4.5 Execution & Results
-- [ ] "Running…" state with spinner on run button
-- [ ] Results table below editor on success
-- [ ] Column headers match SELECT aliases
-- [ ] Row count + execution time in results header
+- [x] Running state with spinner on run button
+- [x] Results table below editor on success
+- [x] Column headers match SELECT aliases
+- [x] Row count + execution time in results header
 - [ ] Paginated display (show first 500 rows, load more on scroll)
-- [ ] Results view toggle: Table | Chart
-- [ ] Chart view uses `@bi-tool/charts` — auto-selects type from result shape
-- [ ] **Chart type selector lives here (query editor), not on the dashboard tile.** Selection is persisted with the saved query. This is the only place to change chart type.
+- [x] Results view toggle: Table | Chart
+- [x] Chart view uses `@bi-tool/charts` — auto-selects type from result shape
+- [x] **Chart type selector in query editor** (ChartCustomizer component) — persisted with saved query
 - [ ] Export CSV button
-- [ ] "Add to dashboard" button → dashboard picker modal
-- [ ] Error state: show warehouse error message inline, SQL editor stays editable
+- [x] "Add to dashboard" button → dashboard picker modal
+- [x] Error state: warehouse error shown inline, SQL editor stays editable
 
 ### 4.7 Query Chaining (Multiple Charts from One Query)
 - [ ] After a query runs, user can create multiple "views" of the same result — each with a different chart type and column mapping
@@ -169,8 +169,8 @@
 
 ### 4.6 Query Persistence
 - [ ] Unsaved changes indicator (dot on Save button)
-- [ ] Auto-save draft every 30s (local, not server)
-- [ ] Named save → server, appears in Queries list
+- [x] Auto-save draft (local localStorage) — restored on next visit to same connection
+- [x] Named save → server, appears in Queries list
 - [ ] Query versioning — keep last 10 versions, accessible via history dropdown
 
 ---
@@ -179,15 +179,16 @@
 
 > Prototype reference: "Queries" tab
 
-- [ ] Table: star · name · created by · last updated · data source · actions
-- [ ] Search bar — filters by name in real time
+- [x] Table: name · last updated · data source · actions
+- [x] Search bar — filters by name in real time
 - [ ] Filter by data source
 - [ ] Filter by tag
 - [ ] Star / favourite toggle per row
-- [ ] Click row → opens query in editor
-- [ ] "Edit" link → opens query in editor
+- [x] Click row → opens query in editor (loads query at `/` with saved SQL)
+- [x] Inline rename
 - [ ] "Run" link → opens query in editor and immediately runs it
-- [ ] Tabs: All · My Queries · Favourites · Recent
+- [ ] Tabs: All · My Queries · Favourites · Recent (only All and Recent implemented)
+- [x] Add to dashboard from queries list
 
 ---
 
@@ -196,18 +197,18 @@
 > No dedicated role for this. Any user can add a connection.
 
 ### 6.1 Connection Setup
-- [ ] Supported warehouses: Snowflake, BigQuery, Postgres, Redshift, Databricks
-- [ ] Warehouse type picker (icon cards)
-- [ ] Per-warehouse credential form (fields differ by type)
-- [ ] Test connection button — runs a `SELECT 1` before saving
-- [ ] Credentials encrypted at rest (Supabase Vault)
-- [ ] Connection listed in sidebar after creation
+- [ ] Supported warehouses: Snowflake, BigQuery, Postgres, Redshift, Databricks (Postgres only currently)
+- [ ] Warehouse type picker (icon cards) — not built; currently a single form
+- [x] Per-warehouse credential form — Postgres (host, port, database, user, password)
+- [x] Test connection button — runs `SELECT 1` before saving
+- [x] Credentials encrypted at rest (backend encryption)
+- [x] Connections listed on `/connections` page
 - [ ] Status indicator: Connected (green) / Error (red) / Untested (grey)
 
 ### 6.2 Schema Introspection
-- [ ] Auto-introspect on first successful connection
-- [ ] Manual re-introspect button
-- [ ] Table tree: schema → table → columns
+- [x] Schema introspection on connection select — table tree shown in query editor sidebar (SchemaPanel)
+- [ ] Manual re-introspect button on connections page
+- [x] Table tree: schema → table → columns (in query editor sidebar)
 - [ ] Per-table row count shown
 - [ ] Annotation dot: green = described, grey = unannotated
 
@@ -215,20 +216,20 @@
 - [ ] Editable table description (plain text)
 - [ ] Editable per-column description (plain text)
 - [ ] Completion indicator: X of Y columns annotated
-- [ ] Annotations stored in Supabase, injected into AI prompts
-- [ ] Annotations are optional — AI still works without them
+- [x] Annotations stored in DB, injected into AI prompts (backend annotation service)
+- [x] Annotations are optional — AI still works without them
 
 ---
 
 ## 7. Data Upload
-- [ ] User can upload CSV or Excel files directly in the UI
-- [ ] Uploaded file is parsed client-side to preview columns + first 10 rows before import
-- [ ] On confirm, file is loaded into a temporary queryable table scoped to the user's session (DuckDB in-process or a named schema in the user's connected warehouse)
-- [ ] Uploaded table appears in the schema sidebar alongside warehouse tables, with an "uploaded" badge
-- [ ] User can query uploaded data with SQL just like any other table
-- [ ] Uploaded data can be joined with warehouse tables in the same query
-- [ ] Files auto-expire after 7 days (configurable) with a warning banner before expiry
-- [ ] Upload size limit: 50MB initially
+- [x] Upload UI component exists (FileUpload.tsx) and backend routes wired (uploads.py, upload_service.py)
+- [ ] Uploaded file parsed client-side to preview columns + first 10 rows before import
+- [ ] On confirm, file loaded into a temporary queryable table (DuckDB or user's warehouse schema)
+- [ ] Uploaded table appears in schema sidebar with "uploaded" badge
+- [ ] User can query uploaded data with SQL
+- [ ] Uploaded data joinable with warehouse tables
+- [ ] Files auto-expire after 7 days with warning banner
+- [ ] Upload size limit: 50MB
 - [ ] Supported types: CSV, TSV, XLSX, JSON (newline-delimited)
 
 ---
@@ -262,13 +263,13 @@
 
 > See ARCHITECTURE.md §packages/charts
 
-- [ ] `renderChart(config, data, container)` exported from `@bi-tool/charts`
-- [ ] Chart types: line, bar, stacked bar, scatter, area, KPI number
-- [ ] Chart registry: `registerChart(type, implementation)`
-- [ ] Auto-select chart type from result shape (see ChartHintService in ARCHITECTURE.md)
-- [ ] User override persisted per saved query
-- [ ] All charts responsive — ResizeObserver, explicit viewBox for SVG
-- [ ] Charts tested at 375px, 768px, 1280px breakpoints
+- [x] Chart components and registry exported from `@bi-tool/charts`
+- [x] Chart types: line, bar, scatter, area, histogram, KPI, donut, heatmap, pivot table (more than spec requires)
+- [x] Chart registry: `ChartRegistry`, `createRegistry`, `registerChart`
+- [x] Auto-select chart type from result shape (`selectChartType`)
+- [x] User override persisted per saved query
+- [x] All charts responsive — ResizeObserver on every chart type
+- [ ] Charts formally tested at 375px, 768px, 1280px breakpoints
 
 ---
 
@@ -278,7 +279,7 @@
 - [ ] Touch targets minimum 44px
 - [ ] No hover-only interactions
 - [ ] Top nav collapses to hamburger on mobile
-- [ ] Dashboard grid: 1-column on mobile
+- [x] Dashboard grid: 1-column on mobile
 - [ ] SQL editor: full-width, adequate height with keyboard open
 - [ ] Results table: horizontal scroll wrapper
 
@@ -290,15 +291,15 @@ Follow this order. Each phase should be demo-able.
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Supabase schema, auth (sign in/up), connection service, Postgres connector | `[ ]` |
-| 2 | Schema introspection + storage, annotation UI | `[ ]` |
-| 3 | AI service (DeepSeek), prompt builder, SQL generation | `[ ]` |
-| 4 | Query executor (read-only enforcement, row limits, logging) | `[ ]` |
-| 5 | Query editor UI — SQL mode, run, results table | `[ ]` |
-| 6 | Query editor UI — AI mode toggle, generation flow | `[ ]` |
-| 7 | `packages/charts` — line + bar to start, chart type switcher | `[ ]` |
-| 8 | Queries list, save/load, query history | `[ ]` |
-| 9 | Dashboard — widget grid, add widget, chart rendering | `[ ]` |
+| 1 | Supabase schema, auth (sign in/up), connection service, Postgres connector | `[x]` auth (Google OAuth) + Postgres connection + service layer done |
+| 2 | Schema introspection + storage, annotation UI | `[~]` introspection works in query editor sidebar; annotation UI not built |
+| 3 | AI service (DeepSeek), prompt builder, SQL generation | `[x]` |
+| 4 | Query executor (read-only enforcement, row limits, logging) | `[x]` |
+| 5 | Query editor UI — SQL mode, run, results table | `[x]` |
+| 6 | Query editor UI — AI mode toggle, generation flow | `[x]` |
+| 7 | `packages/charts` — line + bar to start, chart type switcher | `[x]` 9 chart types shipped |
+| 8 | Queries list, save/load, query history | `[x]` save/load done; query versioning not done |
+| 9 | Dashboard — widget grid, add widget, chart rendering | `[x]` |
 | 10 | Additional warehouse connectors (Snowflake, BigQuery) | `[ ]` |
 | 11 | Alerts, mobile polish, settings | `[ ]` |
 

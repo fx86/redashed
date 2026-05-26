@@ -1,3 +1,5 @@
+import os
+
 import psycopg2
 import psycopg2.extras
 from app.models.schemas import ConnectionParams, TableInfo, ColumnInfo
@@ -32,7 +34,15 @@ def build_connection(params: ConnectionParams):
         if cfg.get("schema_name"):
             kw["schema"] = cfg["schema_name"]
         return snowflake.connector.connect(**kw)
-    return psycopg2.connect(build_dsn(params))
+    if params.db_type == "flat_file":
+        return psycopg2.connect(os.environ["DATABASE_URL"])
+    conn = psycopg2.connect(build_dsn(params))
+    schema = (params.extra_config or {}).get("schema")
+    if schema and params.db_type not in ("snowflake",):
+        with conn.cursor() as cur:
+            cur.execute(f'SET search_path TO "{schema}", public')
+        conn.commit()
+    return conn
 
 
 _INTROSPECT_SQL = """
@@ -48,16 +58,25 @@ _INTROSPECT_SQL = """
         AND t.table_name = c.table_name
     WHERE t.table_schema NOT IN ('information_schema', 'pg_catalog', 'INFORMATION_SCHEMA')
       AND t.table_type = 'BASE TABLE'
+      {schema_clause}
     ORDER BY t.table_schema, t.table_name, c.ordinal_position
 """
 
 
 def test_and_introspect(params: ConnectionParams) -> list[TableInfo]:
+    schema = (params.extra_config or {}).get("schema")
+    if schema:
+        sql = _INTROSPECT_SQL.format(schema_clause="AND t.table_schema = %s")
+        args: tuple = (schema,)
+    else:
+        sql = _INTROSPECT_SQL.format(schema_clause="")
+        args = ()
+
     conn = build_connection(params)
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute("SET statement_timeout = '15s'")
-            cur.execute(_INTROSPECT_SQL)
+            cur.execute(sql, args)
             rows = cur.fetchall()
 
         tables: dict[tuple, TableInfo] = {}

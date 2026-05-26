@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { listUserConnections, createUserConnection, deleteUserConnection } from "@/lib/api";
-import type { SavedConnection } from "@/lib/api";
+import { listUserConnections, createUserConnection, deleteUserConnection, listUploads, deleteUpload } from "@/lib/api";
+import type { SavedConnection, Upload } from "@/lib/api";
 import Nav from "@/components/Nav";
 import SavedConnectionForm from "@/components/SavedConnectionForm";
 
@@ -15,6 +15,7 @@ export default function ConnectionsPage() {
 
   const [mounted, setMounted] = useState(false);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
+  const [uploads, setUploads] = useState<Upload[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +28,11 @@ export default function ConnectionsPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    listUserConnections(jwt)
-      .then(setConnections)
+    Promise.all([listUserConnections(jwt), listUploads(jwt)])
+      .then(([conns, ups]) => {
+        setConnections(conns.filter((c) => c.db_type !== "flat_file"));
+        setUploads(ups);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [jwt]);
@@ -54,6 +58,12 @@ export default function ConnectionsPage() {
     if (!window.confirm("Delete this connection? This cannot be undone.")) return;
     await deleteUserConnection(jwt, id);
     setConnections((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  async function handleDeleteUpload(id: string) {
+    if (!window.confirm("Delete this uploaded table? The data will be removed.")) return;
+    await deleteUpload(jwt, id);
+    setUploads((prev) => prev.filter((u) => u.id !== id));
   }
 
   if (!mounted || authLoading) {
@@ -132,6 +142,50 @@ export default function ConnectionsPage() {
             </div>
           ))}
         </div>
+
+        {/* Flat file uploads — manage existing, upload from the home page */}
+        {uploads.length > 0 && (
+          <div className="pt-2 border-t border-gray-800">
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">Uploaded files</h2>
+            <div className="space-y-1.5">
+              {uploads.map((u) => (
+                <div
+                  key={u.id}
+                  className="group flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium truncate">{u.table_name}</p>
+                      <span className="text-[10px] text-emerald-600 bg-emerald-950/40 border border-emerald-900 rounded px-1 leading-4 flex-shrink-0">
+                        uploaded
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {u.original_filename} · {u.row_count.toLocaleString()} rows · {u.col_count} cols
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                    {u.connection_id && (
+                      <a
+                        href={`/?connection_id=${u.connection_id}`}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        Query →
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleDeleteUpload(u.id)}
+                      className="text-gray-700 hover:text-red-400 text-xs transition-colors opacity-0 group-hover:opacity-100"
+                      aria-label="Delete upload"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

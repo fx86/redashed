@@ -182,3 +182,17 @@ class UpdateLayoutRequest(BaseModel):
 
 class RunSqlRequest(BaseModel):
     sql: str
+
+
+class UploadResponse(BaseModel):
+    id: str
+    original_filename: str
+    table_name: str
+    schema_name: str
+    separator: str
+    row_count: int
+    col_count: int
+    created_at: str
+    expires_at: str
+    connection_id: Optional[str] = None
+    columns: list[str] = []

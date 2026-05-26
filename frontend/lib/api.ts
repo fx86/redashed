@@ -357,3 +357,46 @@ export async function deleteAnnotation(jwt: string, connectionId: string, annota
     headers: authHeaders(jwt),
   });
 }
+
+// Uploads
+
+export interface Upload {
+  id: string;
+  original_filename: string;
+  table_name: string;
+  schema_name: string;
+  separator: string;
+  row_count: number;
+  col_count: number;
+  created_at: string;
+  expires_at: string;
+  connection_id: string | null;
+  columns: string[];
+}
+
+export async function uploadFile(
+  jwt: string,
+  file: File,
+  separator: string,
+  tableName?: string
+): Promise<Upload> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("separator", separator);
+  if (tableName) form.append("table_name", tableName);
+  const res = await fetch(`${BASE}/uploads`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${jwt}` },
+    body: form,
+  });
+  return handleResponse<Upload>(res);
+}
+
+export async function listUploads(jwt: string): Promise<Upload[]> {
+  const res = await fetch(`${BASE}/uploads`, { headers: authHeaders(jwt) });
+  return handleResponse<Upload[]>(res);
+}
+
+export async function deleteUpload(jwt: string, id: string): Promise<void> {
+  await fetch(`${BASE}/uploads/${id}`, { method: "DELETE", headers: authHeaders(jwt) });
+}

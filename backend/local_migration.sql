@@ -118,3 +118,18 @@ CREATE TABLE IF NOT EXISTS schema_annotations (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS schema_annotations_conn_idx ON schema_annotations (user_id, connection_id);
+
+-- Uploaded flat files: one record per upload, actual data lives in a per-user schema
+CREATE TABLE IF NOT EXISTS uploaded_files (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
+    table_name        TEXT NOT NULL,
+    schema_name       TEXT NOT NULL,
+    separator         TEXT NOT NULL DEFAULT ',',
+    row_count         INTEGER NOT NULL DEFAULT 0,
+    col_count         INTEGER NOT NULL DEFAULT 0,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at        TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days')
+);
+CREATE INDEX IF NOT EXISTS uploaded_files_user_id_idx ON uploaded_files (user_id);
