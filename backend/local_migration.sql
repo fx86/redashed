@@ -133,3 +133,8 @@ CREATE TABLE IF NOT EXISTS uploaded_files (
     expires_at        TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days')
 );
 CREATE INDEX IF NOT EXISTS uploaded_files_user_id_idx ON uploaded_files (user_id);
+
+-- data.gov ingested datasets (tables created dynamically by datagov_service)
+-- user_connections rows with db_type='datagov' store metadata in extra_config
+-- The actual data lives in the datagov schema below
+CREATE SCHEMA IF NOT EXISTS datagov;

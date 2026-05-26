@@ -196,3 +196,10 @@ class UploadResponse(BaseModel):
     expires_at: str
     connection_id: Optional[str] = None
     columns: list[str] = []
+
+
+# data.gov
+class DataGovImportRequest(BaseModel):
+    dataset_id: str
+    dataset_title: str
+    resource_url: str
