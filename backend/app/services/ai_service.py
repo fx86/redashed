@@ -6,6 +6,12 @@ from app.models.schemas import TableInfo
 
 _client: OpenAI | None = None
 
+_PROVIDER_BASE_URLS: dict[str, str | None] = {
+    "deepseek": "https://api.deepseek.com",
+    "openai": None,
+    "openrouter": "https://openrouter.ai/api/v1",
+}
+
 
 def _get_client() -> OpenAI:
     global _client
@@ -15,6 +21,29 @@ def _get_client() -> OpenAI:
             base_url="https://api.deepseek.com",
         )
     return _client
+
+
+def _build_client(provider: str, api_key: str) -> OpenAI:
+    base_url = _PROVIDER_BASE_URLS.get(provider)
+    kw: dict = {"api_key": api_key}
+    if base_url:
+        kw["base_url"] = base_url
+    if provider == "openrouter":
+        kw["default_headers"] = {"HTTP-Referer": "https://querywise.app"}
+    return OpenAI(**kw)
+
+
+def test_key(provider: str, model: str, api_key: str) -> None:
+    """Raises ValueError if the key is invalid or the provider rejects it."""
+    try:
+        client = _build_client(provider, api_key)
+        client.chat.completions.create(
+            model=model,
+            max_tokens=1,
+            messages=[{"role": "user", "content": "hi"}],
+        )
+    except Exception as e:
+        raise ValueError(str(e)[:200])
 
 
 def _schema_to_text(tables: list[TableInfo], annotations: list[dict] | None = None) -> str:
@@ -40,11 +69,23 @@ def _schema_to_text(tables: list[TableInfo], annotations: list[dict] | None = No
     return "\n".join(lines)
 
 
-def generate_sql(question: str, tables: list[TableInfo], annotations: list[dict] | None = None) -> str:
+def generate_sql(
+    question: str,
+    tables: list[TableInfo],
+    annotations: list[dict] | None = None,
+    user_ai_key: dict | None = None,
+) -> str:
     schema_text = _schema_to_text(tables, annotations)
 
-    response = _get_client().chat.completions.create(
-        model="deepseek-chat",
+    if user_ai_key:
+        client = _build_client(user_ai_key["provider"], user_ai_key["api_key"])
+        model = user_ai_key["model"]
+    else:
+        client = _get_client()
+        model = "deepseek-chat"
+
+    response = client.chat.completions.create(
+        model=model,
         max_tokens=1024,
         messages=[
             {

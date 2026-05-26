@@ -300,19 +300,19 @@
 ---
 
 ## 8. Settings
-- [ ] Profile: name, email, password change
+- [x] Profile: name (editable), email (display), password change (email+password users only)
 - [ ] Workspace: name, logo
-- [ ] Connections: manage all warehouse connections
+- [ ] Connections: manage all warehouse connections (link to /connections)
 - [ ] API keys: generate personal access tokens (for future API access)
 - [ ] Danger zone: delete account
 
 ### 8.1 AI Provider Keys
-- [ ] User can add their own AI provider API key (OpenAI, OpenRouter, Anthropic, etc.)
-- [ ] Key stored encrypted at rest — never logged or exposed to frontend
-- [ ] Provider picker dropdown: OpenAI · OpenRouter · Anthropic · DeepSeek (default)
-- [ ] Key tested on save (ping the provider's models endpoint)
-- [ ] Per-user key takes priority over platform default; fallback to platform key if user has none
-- [ ] Model selector per provider (e.g. GPT-4o, claude-3-5-sonnet, deepseek-chat)
+- [x] User can add their own AI provider key (DeepSeek · OpenAI · OpenRouter; Anthropic deferred — needs separate SDK)
+- [x] Key stored encrypted at rest — never logged or exposed to frontend
+- [x] Provider picker dropdown + model selector per provider
+- [x] Key tested on save (minimal chat completion call to provider)
+- [x] Per-user key takes priority over platform default; fallback to platform key if user has none
+- [x] One active key per user — saving a new key replaces the old one
 
 ---
 

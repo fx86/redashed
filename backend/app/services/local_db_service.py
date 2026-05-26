@@ -9,13 +9,33 @@ import psycopg2.extras
 from psycopg2.pool import ThreadedConnectionPool
 
 _pool: ThreadedConnectionPool | None = None
+_tables_ready = False
 
 
 def _get_pool() -> ThreadedConnectionPool:
-    global _pool
+    global _pool, _tables_ready
     if _pool is None:
         url = os.environ["DATABASE_URL"]
         _pool = ThreadedConnectionPool(minconn=1, maxconn=10, dsn=url)
+    if not _tables_ready:
+        conn = _pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS user_ai_keys (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id TEXT NOT NULL UNIQUE,
+                        provider TEXT NOT NULL,
+                        model TEXT NOT NULL,
+                        api_key_enc TEXT NOT NULL,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
+            conn.commit()
+            _tables_ready = True
+        finally:
+            _pool.putconn(conn)
     return _pool
 
 
@@ -549,3 +569,41 @@ def delete_upload_record(upload_id: str, user_id: str) -> None:
                 "DELETE FROM uploaded_files WHERE id = %s AND user_id = %s",
                 (upload_id, user_id),
             )
+
+
+# ── User AI keys ───────────────────────────────────────────────────────────────
+
+def upsert_user_ai_key(user_id: str, provider: str, model: str, api_key_enc: str) -> dict:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO user_ai_keys (user_id, provider, model, api_key_enc)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE
+                    SET provider = EXCLUDED.provider,
+                        model = EXCLUDED.model,
+                        api_key_enc = EXCLUDED.api_key_enc,
+                        updated_at = NOW()
+                RETURNING id, user_id, provider, model, created_at, updated_at
+                """,
+                (user_id, provider, model, api_key_enc),
+            )
+            return dict(cur.fetchone())
+
+
+def get_user_ai_key(user_id: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, user_id, provider, model, api_key_enc FROM user_ai_keys WHERE user_id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
+def delete_user_ai_key(user_id: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM user_ai_keys WHERE user_id = %s", (user_id,))

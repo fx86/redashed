@@ -453,3 +453,34 @@ export async function importDataGov(
   });
   return handleResponse<SavedConnection>(res);
 }
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+
+export interface AiKeyStatus {
+  has_key: boolean;
+  provider: string | null;
+  model: string | null;
+}
+
+export async function getAiKeyStatus(jwt: string): Promise<AiKeyStatus> {
+  const res = await fetch(`${BASE}/settings/ai-key`, { headers: authHeaders(jwt) });
+  return handleResponse<AiKeyStatus>(res);
+}
+
+export async function upsertAiKey(
+  jwt: string,
+  provider: string,
+  model: string,
+  api_key: string,
+): Promise<AiKeyStatus> {
+  const res = await fetch(`${BASE}/settings/ai-key`, {
+    method: "PUT",
+    headers: { ...authHeaders(jwt), "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, model, api_key }),
+  });
+  return handleResponse<AiKeyStatus>(res);
+}
+
+export async function deleteAiKey(jwt: string): Promise<void> {
+  await fetch(`${BASE}/settings/ai-key`, { method: "DELETE", headers: authHeaders(jwt) });
+}

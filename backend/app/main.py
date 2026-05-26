@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import connections, query, user_connections, saved_queries, dashboards, uploads, datagov
+from app.api.routes import connections, query, user_connections, saved_queries, dashboards, uploads, datagov, settings
 
 app = FastAPI(title="BI Tool API")
 
@@ -21,6 +21,7 @@ app.include_router(saved_queries.router)
 app.include_router(dashboards.router)
 app.include_router(uploads.router)
 app.include_router(datagov.router)
+app.include_router(settings.router)
 
 
 @app.get("/health")

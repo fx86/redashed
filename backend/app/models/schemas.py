@@ -211,3 +211,16 @@ class DataGovImportRequest(BaseModel):
     dataset_id: str
     dataset_title: str
     resource_url: str
+
+
+# Settings — AI provider keys
+class AiKeyUpsertRequest(BaseModel):
+    provider: str
+    model: str
+    api_key: str
+
+
+class AiKeyResponse(BaseModel):
+    has_key: bool
+    provider: Optional[str] = None
+    model: Optional[str] = None

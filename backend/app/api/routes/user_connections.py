@@ -17,6 +17,17 @@ def _load_connection(connection_id: str, user_id: str) -> dict:
     return row
 
 
+def _resolve_ai_key(user_id: str):
+    row = local_db_service.get_user_ai_key(user_id)
+    if not row:
+        return None
+    return {
+        "provider": row["provider"],
+        "model": row["model"],
+        "api_key": encryption_service.decrypt(row["api_key_enc"]),
+    }
+
+
 def _params_from_row(row: dict) -> ConnectionParams:
     return ConnectionParams(
         db_type=row.get("db_type", "postgres"),
@@ -105,6 +116,7 @@ def get_schema(connection_id: str, user=Depends(get_current_user)):
 def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])
     db_type = row.get("db_type")
+    user_ai_key = _resolve_ai_key(user["user_id"])
     try:
         if db_type == "flat_file":
             from app.services import upload_service
@@ -119,7 +131,7 @@ def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user
                 for t in raw
             ]
             annotations = local_db_service.list_annotations(user["user_id"], connection_id)
-            sql = ai_service.generate_sql(body.question, tables, annotations)
+            sql = ai_service.generate_sql(body.question, tables, annotations, user_ai_key=user_ai_key)
             if sql.startswith("-- Cannot answer"):
                 raise HTTPException(status_code=422, detail=sql)
             columns, result_rows, elapsed_ms = upload_service.execute_upload_sql(user["user_id"], sql)
@@ -134,7 +146,7 @@ def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user
                 columns=[ColumnInfo(name=c["column_name"], type=c["data_type"], nullable=c["is_nullable"] == "YES") for c in cols],
             )]
             annotations = local_db_service.list_annotations(user["user_id"], connection_id)
-            sql = ai_service.generate_sql(body.question, tables, annotations)
+            sql = ai_service.generate_sql(body.question, tables, annotations, user_ai_key=user_ai_key)
             if sql.startswith("-- Cannot answer"):
                 raise HTTPException(status_code=422, detail=sql)
             columns, result_rows, elapsed_ms = datagov_service.execute_select(sql)
@@ -143,7 +155,7 @@ def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user
             params = _params_from_row(row)
             tables = connection_service.test_and_introspect(params)
             annotations = local_db_service.list_annotations(user["user_id"], connection_id)
-            sql = ai_service.generate_sql(body.question, tables, annotations)
+            sql = ai_service.generate_sql(body.question, tables, annotations, user_ai_key=user_ai_key)
             if sql.startswith("-- Cannot answer"):
                 raise HTTPException(status_code=422, detail=sql)
             columns, result_rows, elapsed_ms = query_service.execute_select(params, sql)
