@@ -9,8 +9,9 @@ export function downloadCSV(columns: string[], rows: unknown[][], filename = "qu
     columns.map(escape).join(","),
     ...rows.map((row) => (row as unknown[]).map(escape).join(",")),
   ];
-  // UTF-8 BOM so Excel/Numbers open correctly
-  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  // UTF-8 BOM (explicit bytes) so Excel/Numbers open correctly
+  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+  const blob = new Blob([bom, lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
   saveAs(blob, filename);
 }
 

@@ -688,7 +688,7 @@ export default function Home() {
 
                         <div className="flex items-center gap-1 ml-auto">
                           <button
-                            onClick={() => downloadCSV(result.columns, result.rows, slugFilename(lastQuestion, "csv"))}
+                            onClick={() => downloadCSV(result.columns, result.rows, slugFilename(queryMode === "ai" ? lastQuestion : (activeConnection?.name ?? "query"), "csv"))}
                             className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors"
                             title="Download CSV"
                           >
@@ -699,7 +699,7 @@ export default function Home() {
                             <button
                               onClick={() => {
                                 if (chartContainerRef.current)
-                                  downloadChartImage(chartContainerRef.current, slugFilename(lastQuestion, "png"));
+                                  downloadChartImage(chartContainerRef.current, slugFilename(queryMode === "ai" ? lastQuestion : (activeConnection?.name ?? "query"), "png"));
                               }}
                               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors"
                               title="Download chart as PNG"
