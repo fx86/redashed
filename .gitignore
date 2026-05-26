@@ -15,6 +15,12 @@ packages/charts/dist/
 # Debug artifacts
 nodejs-memory-bomb.jpg
 
+# Screenshot and export artifacts
+*.png
+*.csv
+.claude/
+.playwright-mcp/
+
 # Dev script runtime
 .pids/
 .logs/
