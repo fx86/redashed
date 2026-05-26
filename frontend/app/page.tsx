@@ -448,6 +448,12 @@ export default function Home() {
                     onSave={handleAddConnection}
                     onCancel={() => { setShowAddForm(false); setError(null); }}
                     loading={loading}
+                    jwt={jwt}
+                    onDataGovImport={(conn) => {
+                      setConnections((prev) => [...prev, conn]);
+                      setShowAddForm(false);
+                      handleSelectConnection(conn);
+                    }}
                   />
                 )}
 
