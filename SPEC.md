@@ -330,6 +330,16 @@
 - [ ] Hover tooltips — on mouseover, show data point values (x, y, series label) in a floating tooltip for all chart types that support it (line, bar, scatter, area, histogram, donut); KPI and pivot table excluded
 - [ ] Charts formally tested at 375px, 768px, 1280px breakpoints
 
+### 9.1 Custom Chart Builder
+- [ ] User can write a custom chart as a JavaScript function in an in-app code editor (Monaco or textarea)
+- [ ] Function signature: `(data: Row[], config: ChartConfig, container: HTMLElement) => void` — same contract as built-in charts
+- [ ] Custom chart registered under a user-chosen name; appears in the chart type selector alongside built-in types
+- [ ] Custom charts persisted to DB per user (name, source code, created_at)
+- [ ] Custom charts available in the query editor chart type dropdown and on dashboard tiles
+- [ ] "Preview" button runs the function against the current query result in a sandboxed iframe
+- [ ] Built-in chart source code viewable (read-only) as reference/starting point
+- [ ] Custom chart can be deleted; any saved queries using it fall back to the auto-selected type
+
 ---
 
 ## 10. Mobile
@@ -372,5 +382,5 @@ Items considered but not in scope for v1:
 - Role-based access control (separate engineer vs business user role) — **removed by design decision** in favour of unified UX
 - Slack notifications for alerts (email only in v1)
 - Dashboard embedding / public share links
-- Custom chart types via user registry (architecture supports it, UI deferred)
+- ~~Custom chart types via user registry~~ — moved to §9.1, now in active spec
 - AI explain SQL (natural language explanation of generated query)

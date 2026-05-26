@@ -18,6 +18,7 @@ nodejs-memory-bomb.jpg
 # Screenshot and export artifacts
 *.png
 *.csv
+!docs/screenshots/*.png
 .claude/
 .playwright-mcp/
 
