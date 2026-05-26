@@ -24,6 +24,7 @@ import { selectChartType, useRegistry } from "@bi-tool/charts";
 import type { ChartConfig, ChartType } from "@bi-tool/charts";
 import ChartView from "@/components/ChartView";
 import Nav from "@/components/Nav";
+import { downloadCSV, downloadChartImage, slugFilename } from "@/lib/export";
 
 export default function DashboardViewPage() {
   const { user, session, loading: authLoading } = useAuth();
@@ -49,6 +50,7 @@ export default function DashboardViewPage() {
   const [newEditorId, setNewEditorId] = useState("");
   const [editorLoading, setEditorLoading] = useState(false);
 
+  const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const { width: containerWidth, containerRef, measureWidth } = useContainerWidth({ initialWidth: 900 });
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -309,20 +311,23 @@ export default function DashboardViewPage() {
                         className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col"
                         style={{ height: tileH }}
                       >
-                        <div className="px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2">
-                          <p className="text-sm text-gray-100 font-medium leading-snug truncate flex-1">{tile.question}</p>
-                          <a href={`/?query_id=${tile.saved_query_id}`} className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
+                        <div className="group px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2">
+                          <a href={`/?query_id=${tile.saved_query_id}`} className="text-sm text-gray-100 font-medium leading-snug truncate flex-1 hover:text-indigo-300 transition-colors">
+                            {tile.question}
                           </a>
+                          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <a href={`/?query_id=${tile.saved_query_id}`} title="Open query" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors">
+                              <ExternalLinkIcon />
+                            </a>
+                            {res && <button onClick={() => downloadCSV(res.columns, res.rows, slugFilename(tile.question, "csv"))} title="Download CSV" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"><TileDownloadIcon /></button>}
+                            {res && ct !== "table" && <button onClick={() => { const el = chartRefs.current.get(tile.id); if (el) downloadChartImage(el, slugFilename(tile.question, "png")); }} title="Download PNG" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors text-[9px] font-medium">PNG</button>}
+                          </div>
                         </div>
                         <div className="flex-1 overflow-auto p-2 min-h-0">
                           {isLoading && <div className="flex flex-col gap-2 h-full justify-center px-2"><div className="h-2 bg-gray-800 rounded animate-pulse w-3/4" /><div className="h-2 bg-gray-800 rounded animate-pulse w-1/2" /></div>}
                           {!isLoading && error && <p className="text-xs text-red-400 p-2">{error}</p>}
                           {!isLoading && res && ct !== "table" && (
-                            <div className="h-full overflow-hidden rounded">
+                            <div ref={(el) => { if (el) chartRefs.current.set(tile.id, el); else chartRefs.current.delete(tile.id); }} className="h-full overflow-hidden rounded">
                               <ChartView chartType={ct} columns={res.columns} rows={res.rows} config={config} />
                             </div>
                           )}
@@ -364,20 +369,43 @@ export default function DashboardViewPage() {
                     className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col"
                   >
                     {/* Tile header */}
-                    <div className={`drag-handle px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
-                      <p className="text-sm text-gray-100 font-medium leading-snug select-none truncate flex-1">{tile.question}</p>
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className={`group drag-handle px-3 pt-2.5 pb-2 border-b border-gray-800/60 flex-shrink-0 flex items-center justify-between gap-2 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}>
+                      <a
+                        href={`/?query_id=${tile.saved_query_id}`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="text-sm text-gray-100 font-medium leading-snug select-none truncate flex-1 hover:text-indigo-300 transition-colors"
+                      >
+                        {tile.question}
+                      </a>
+                      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a
                           href={`/?query_id=${tile.saved_query_id}`}
                           onMouseDown={(e) => e.stopPropagation()}
-                          title="Edit query"
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
+                          title="Open query"
+                          className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
                         >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
+                          <ExternalLinkIcon />
                         </a>
+                        {results[tile.id] && (
+                          <button
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => downloadCSV(results[tile.id].columns, results[tile.id].rows, slugFilename(tile.question, "csv"))}
+                            title="Download CSV"
+                            className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+                          >
+                            <TileDownloadIcon />
+                          </button>
+                        )}
+                        {results[tile.id] && ct !== "table" && (
+                          <button
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => { const el = chartRefs.current.get(tile.id); if (el) downloadChartImage(el, slugFilename(tile.question, "png")); }}
+                            title="Download PNG"
+                            className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors text-[9px] font-medium"
+                          >
+                            PNG
+                          </button>
+                        )}
                         {canEdit && (
                           <button
                             onMouseDown={(e) => e.stopPropagation()}
@@ -419,7 +447,7 @@ export default function DashboardViewPage() {
 
                       {/* Chart */}
                       {!isLoading && res && ct !== "table" && (
-                        <div className="h-full overflow-hidden rounded">
+                        <div ref={(el) => { if (el) chartRefs.current.set(tile.id, el); else chartRefs.current.delete(tile.id); }} className="h-full overflow-hidden rounded">
                           <ChartView chartType={ct} columns={res.columns} rows={res.rows} config={config} />
                         </div>
                       )}
@@ -510,5 +538,24 @@ export default function DashboardViewPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function TileDownloadIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v13M5 14l7 7 7-7" />
+      <line x1="3" y1="21" x2="21" y2="21" />
+    </svg>
   );
 }
