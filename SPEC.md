@@ -212,6 +212,7 @@
 - [x] Credentials encrypted at rest (backend encryption)
 - [x] Connections listed on `/connections` page
 - [ ] Status indicator: Connected (green) / Error (red) / Untested (grey)
+- [x] Delete connection — confirm modal; drops connection config and any cached schema; data.gov ingested tables also dropped
 
 ### 6.2 Schema Introspection
 - [x] Schema introspection on connection select — table tree shown in query editor sidebar (SchemaPanel)
@@ -325,6 +326,7 @@
 - [x] Auto-select chart type from result shape (`selectChartType`)
 - [x] User override persisted per saved query
 - [x] All charts responsive — ResizeObserver on every chart type
+- [ ] Hover tooltips — on mouseover, show data point values (x, y, series label) in a floating tooltip for all chart types that support it (line, bar, scatter, area, histogram, donut); KPI and pivot table excluded
 - [ ] Charts formally tested at 375px, 768px, 1280px breakpoints
 
 ---

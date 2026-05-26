@@ -22,6 +22,8 @@ export default function ConnectionsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "connection"; item: SavedConnection } | { type: "upload"; item: Upload } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -63,16 +65,21 @@ export default function ConnectionsPage() {
     setError(null);
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("Delete this connection? This cannot be undone.")) return;
-    await deleteUserConnection(jwt, id);
-    setConnections((prev) => prev.filter((c) => c.id !== id));
-  }
-
-  async function handleDeleteUpload(id: string) {
-    if (!window.confirm("Delete this uploaded table? The data will be removed.")) return;
-    await deleteUpload(jwt, id);
-    setUploads((prev) => prev.filter((u) => u.id !== id));
+  async function confirmAndDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      if (confirmDelete.type === "connection") {
+        await deleteUserConnection(jwt, confirmDelete.item.id);
+        setConnections((prev) => prev.filter((c) => c.id !== confirmDelete.item.id));
+      } else {
+        await deleteUpload(jwt, confirmDelete.item.id);
+        setUploads((prev) => prev.filter((u) => u.id !== confirmDelete.item.id));
+      }
+      setConfirmDelete(null);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function dbTypeBadge(db_type: string) {
@@ -158,7 +165,7 @@ export default function ConnectionsPage() {
                   Query →
                 </a>
                 <button
-                  onClick={() => handleDelete(conn.id)}
+                  onClick={() => setConfirmDelete({ type: "connection", item: conn })}
                   className="text-gray-700 hover:text-red-400 text-xs transition-colors opacity-0 group-hover:opacity-100"
                   aria-label="Delete connection"
                 >
@@ -200,7 +207,7 @@ export default function ConnectionsPage() {
                       </a>
                     )}
                     <button
-                      onClick={() => handleDeleteUpload(u.id)}
+                      onClick={() => setConfirmDelete({ type: "upload", item: u })}
                       className="text-gray-700 hover:text-red-400 text-xs transition-colors opacity-0 group-hover:opacity-100"
                       aria-label="Delete upload"
                     >
@@ -213,6 +220,41 @@ export default function ConnectionsPage() {
           </div>
         )}
       </div>
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 w-full max-w-sm shadow-2xl">
+            <h2 className="text-sm font-semibold text-gray-100 mb-1">
+              {confirmDelete.type === "connection" ? "Delete connection?" : "Delete uploaded table?"}
+            </h2>
+            <p className="text-xs text-gray-400 mb-1">
+              <span className="text-gray-200 font-medium">
+                {confirmDelete.type === "connection" ? confirmDelete.item.name : confirmDelete.item.table_name}
+              </span>{" "}
+              will be permanently removed.
+            </p>
+            {confirmDelete.type === "connection" && confirmDelete.item.db_type === "datagov" && (
+              <p className="text-xs text-amber-400 mb-3">The ingested dataset will also be dropped from the database.</p>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                disabled={deleting}
+                className="text-xs px-3 py-1.5 rounded border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAndDelete}
+                disabled={deleting}
+                className="text-xs px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
