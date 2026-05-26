@@ -12,36 +12,46 @@ import psycopg2.extras
 
 from app.services import local_db_service
 
-_CKAN_BASE = "https://catalog.data.gov/api/3/action"
+_SEARCH_BASE = "https://catalog.data.gov/search"
 _ROW_LIMIT = 500_000
+
+
+def _is_csv(dist: dict) -> bool:
+    fmt = dist.get("format", "").upper()
+    media = dist.get("mediaType", "").lower()
+    url = dist.get("downloadURL", "")
+    return fmt == "CSV" or "csv" in media or url.lower().endswith(".csv")
 
 
 def search_datasets(query: str, rows: int = 10) -> list[dict]:
     r = httpx.get(
-        f"{_CKAN_BASE}/package_search",
-        params={"q": query, "rows": rows},
+        _SEARCH_BASE,
+        params={"q": query, "per_page": rows},
+        headers={"Accept": "application/json"},
         timeout=10,
     )
     r.raise_for_status()
-    results = r.json()["result"]["results"]
+    results = r.json().get("results", [])
     out = []
     for pkg in results:
+        dcat = pkg.get("dcat", {})
         csv_resources = [
             {
-                "id": res["id"],
-                "name": res.get("name") or res.get("description") or "CSV",
-                "url": res["url"],
+                "id": dist.get("downloadURL", ""),
+                "name": dist.get("title") or "CSV",
+                "url": dist["downloadURL"],
             }
-            for res in pkg.get("resources", [])
-            if res.get("format", "").upper() == "CSV" and res.get("url")
+            for dist in dcat.get("distribution", [])
+            if _is_csv(dist) and dist.get("downloadURL")
         ]
         if not csv_resources:
             continue
+        org = pkg.get("organization") or {}
         out.append({
-            "id": pkg["id"],
+            "id": pkg.get("identifier", ""),
             "title": pkg.get("title", ""),
-            "notes": (pkg.get("notes") or "")[:200],
-            "organization": (pkg.get("organization") or {}).get("title", ""),
+            "notes": (pkg.get("description") or "")[:200],
+            "organization": org.get("name", "") if isinstance(org, dict) else "",
             "resources": csv_resources,
         })
     return out
@@ -80,10 +90,9 @@ def ingest(resource_url: str, dataset_title: str) -> tuple[str, int]:
         for i, h in enumerate(headers)
     ]
     col_defs = ", ".join(f'"{c}" TEXT' for c in col_names)
-    insert_sql = (
-        f'INSERT INTO {full_table} ({", ".join(f\'"{c}"\' for c in col_names)}) '
-        f'VALUES ({", ".join(["%s"] * len(col_names))})'
-    )
+    col_list = ", ".join(f'"{c}"' for c in col_names)
+    placeholders = ", ".join(["%s"] * len(col_names))
+    insert_sql = f"INSERT INTO {full_table} ({col_list}) VALUES ({placeholders})"
 
     with local_db_service._conn() as conn:
         with conn.cursor() as cur:
