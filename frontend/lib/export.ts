@@ -1,11 +1,4 @@
-function triggerDownload(href: string, filename: string) {
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
+import { saveAs } from "file-saver";
 
 export function downloadCSV(columns: string[], rows: unknown[][], filename = "query-results.csv") {
   function escape(v: unknown): string {
@@ -16,12 +9,9 @@ export function downloadCSV(columns: string[], rows: unknown[][], filename = "qu
     columns.map(escape).join(","),
     ...rows.map((row) => (row as unknown[]).map(escape).join(",")),
   ];
-  // UTF-8 BOM so Excel/Numbers open correctly; data: URI so Safari respects the filename
-  const content = "﻿" + lines.join("\r\n");
-  triggerDownload(
-    "data:text/csv;charset=utf-8," + encodeURIComponent(content),
-    filename,
-  );
+  // UTF-8 BOM so Excel/Numbers open correctly
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  saveAs(blob, filename);
 }
 
 export async function downloadChartImage(container: HTMLElement, filename = "chart.png") {
@@ -54,9 +44,10 @@ export async function downloadChartImage(container: HTMLElement, filename = "cha
       ctx.fillStyle = "#0a0f1a";
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
-      // toDataURL is synchronous — stays within the user-gesture context
-      triggerDownload(canvas.toDataURL("image/png"), filename);
-      resolve();
+      canvas.toBlob((blob) => {
+        if (blob) saveAs(blob, filename);
+        resolve();
+      }, "image/png");
     };
     img.onerror = () => resolve();
     img.src = svgDataURI;
