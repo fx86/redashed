@@ -313,6 +313,7 @@
 - [x] Key tested on save (minimal chat completion call to provider)
 - [x] Per-user key takes priority over platform default; fallback to platform key if user has none
 - [x] One active key per user — saving a new key replaces the old one
+- [ ] Multiple saved keys per user — one per provider; active key selectable per connection or query session
 
 ---
 
