@@ -604,7 +604,22 @@ export default function Home() {
                           {(["table", ...registry.all().map((d) => d.type)] as ChartType[]).map((t) => (
                             <button
                               key={t}
-                              onClick={() => setChartType(t)}
+                              onClick={() => {
+                                setChartType(t);
+                                if (t !== "table" && result) {
+                                  const def = registry.get(t);
+                                  if (def) {
+                                    const rows = result.rows.map((row) => {
+                                      const obj: Record<string, unknown> = {};
+                                      result.columns.forEach((col, i) => { obj[col] = row[i]; });
+                                      return obj;
+                                    });
+                                    const derived = def.deriveConfig(result.columns, rows);
+                                    const clean = Object.fromEntries(Object.entries(derived).filter(([, v]) => v !== undefined && v !== ""));
+                                    setChartConfig((prev) => ({ ...prev, ...clean, type: t }));
+                                  }
+                                }
+                              }}
                               className={`text-xs px-2.5 py-1 rounded transition-colors ${
                                 chartType === t
                                   ? "bg-indigo-600 text-white"
@@ -628,7 +643,7 @@ export default function Home() {
                       </div>
 
                       {chartType !== "table" && (
-                        <div className="border border-gray-800 rounded-lg overflow-hidden">
+                        <div className="border border-gray-800 rounded-lg overflow-hidden h-80">
                           <ChartView
                             chartType={chartType}
                             columns={result.columns}

@@ -20,6 +20,7 @@ export type { ChartType, ChartConfig } from "./utils/selectChartType";
 export { fmt } from "./utils/fmt";
 export { inferKind } from "./utils/infer";
 export type { ColKind } from "./utils/infer";
+export { coerceData } from "./utils/coerce";
 
 // Built-in charts — components and definitions
 export { BarChart, barDefinition } from "./charts/BarChart";

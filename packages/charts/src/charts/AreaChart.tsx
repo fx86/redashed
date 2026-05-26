@@ -28,8 +28,9 @@ export function AreaChart({ data, config, theme }: ChartProps) {
   useEffect(() => {
     if (!ref.current || !data.length || !x || !y || !width || !height) return;
 
-    const coerced = data.map((d) => ({ ...d, [x]: new Date(d[x] as string) }));
-    const vals = coerced.map((d) => d[y] as number);
+    const xIsDate = data[0][x] instanceof Date;
+    const vals = data.map((d) => d[y] as number).filter(isFinite);
+    if (!vals.length) return;
     const minY = Math.min(...vals);
     const maxY = Math.max(...vals);
 
@@ -41,20 +42,22 @@ export function AreaChart({ data, config, theme }: ChartProps) {
       width,
       height,
       marks: [
-        Plot.areaY(coerced, {
+        Plot.areaY(data, {
           x,
           y,
           fill: theme.ink,
           fillOpacity: 0.12,
         }),
-        Plot.lineY(coerced, {
+        Plot.lineY(data, {
           x,
           y,
           stroke: theme.ink,
           strokeWidth: 1.5,
         }),
       ],
-      x: { type: "utc", label: null, tickSize: 0, ticks: 4 },
+      x: xIsDate
+        ? { type: "utc", label: null, tickSize: 0, ticks: 4 }
+        : { label: null, tickSize: 0 },
       y: {
         label: null,
         tickSize: 0,
@@ -85,15 +88,18 @@ export const areaDefinition: ChartDefinition = {
   suitability(columns, data) {
     const dates = columns.filter((c) => inferKind(data.map((r) => r[c])) === "date");
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    // Scores below line (0.9) so line wins auto-selection; area available via user override
     if (dates.length >= 1 && nums.length >= 1) return 0.75;
+    if (nums.length >= 2) return 0.3;
     return 0;
   },
 
   deriveConfig(columns, data) {
     const dates = columns.filter((c) => inferKind(data.map((r) => r[c])) === "date");
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    return { x: dates[0], y: nums[0] };
+    if (dates.length >= 1 && nums.length >= 1) return { x: dates[0], y: nums[0] };
+    if (nums.length >= 2) return { x: nums[0], y: nums[1] };
+    if (nums.length === 1) return { x: columns.find((c) => !nums.includes(c)) ?? columns[0], y: nums[0] };
+    return { x: columns[0] ?? "", y: columns[1] ?? columns[0] ?? "" };
   },
 
   component: AreaChart,

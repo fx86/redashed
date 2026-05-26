@@ -268,6 +268,75 @@ export default function ChartCustomizer({ config, columns, onChange }: Props) {
               </div>
             </>
           )}
+
+          {/* ── Pivot-specific controls ────────────────────────────────────── */}
+          {chartType === "pivot" && columns.length > 0 && (
+            <>
+              <div className="h-px bg-gray-800" />
+              <div className="p-3 space-y-3">
+                <SectionLabel>Pivot fields</SectionLabel>
+
+                {/* Row dimensions — multi-select via checkboxes */}
+                <div>
+                  <label className="block text-[10px] text-gray-600 uppercase tracking-wider mb-1">
+                    Row dimensions
+                  </label>
+                  <div className="space-y-1">
+                    {columns.map((c) => {
+                      const rows = (config as { rows?: string[] }).rows ?? [];
+                      const checked = rows.includes(c);
+                      return (
+                        <label key={c} className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked ? rows.filter((r) => r !== c) : [...rows, c];
+                              onChange({ rows: next } as Partial<ChartConfig>);
+                            }}
+                            className="cursor-pointer accent-indigo-500"
+                          />
+                          <span className="text-xs text-gray-300 group-hover:text-gray-100 transition-colors truncate">
+                            {c}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Column axis */}
+                <div>
+                  <label className="block text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">
+                    Column axis
+                  </label>
+                  <select
+                    value={(config as { col?: string }).col ?? ""}
+                    onChange={(e) => onChange({ col: e.target.value } as Partial<ChartConfig>)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">— none —</option>
+                    {columns.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* Value */}
+                <div>
+                  <label className="block text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">
+                    Value
+                  </label>
+                  <select
+                    value={(config as { value?: string }).value ?? ""}
+                    onChange={(e) => onChange({ value: e.target.value } as Partial<ChartConfig>)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">— none —</option>
+                    {columns.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
         </div>,
         document.body,
       )}

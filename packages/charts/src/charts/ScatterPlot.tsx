@@ -96,7 +96,9 @@ export const scatterDefinition: ChartDefinition = {
 
   deriveConfig(columns, data) {
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    return { x: nums[0], y: nums[1] };
+    const x = nums[0] ?? columns[0] ?? "";
+    const y = nums[1] ?? nums[0] ?? columns[1] ?? columns[0] ?? "";
+    return { x, y };
   },
 
   component: ScatterPlot,

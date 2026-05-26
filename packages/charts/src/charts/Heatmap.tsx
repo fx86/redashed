@@ -97,7 +97,11 @@ export const heatmapDefinition: ChartDefinition<HeatmapConfig> = {
     const card = (col: string) => new Set(data.map((r) => r[col])).size;
     // Lower cardinality → column axis; higher → row axis
     const sorted = [...strs].sort((a, b) => card(a) - card(b));
-    return { x: sorted[0], y: sorted[1] ?? strs[1], fill: nums[0] };
+    return {
+      x: sorted[0] ?? columns[0] ?? "",
+      y: sorted[1] ?? strs[1] ?? columns[1] ?? columns[0] ?? "",
+      fill: nums[0] ?? columns[2] ?? columns[1] ?? columns[0] ?? "",
+    };
   },
 
   component: Heatmap,

@@ -91,7 +91,9 @@ export const barDefinition: ChartDefinition = {
   deriveConfig(columns, data) {
     const strs = columns.filter((c) => inferKind(data.map((r) => r[c])) === "string");
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    return { x: strs[0], y: nums[0] };
+    const x = strs[0] ?? columns.find((c) => !nums.includes(c)) ?? columns[0] ?? "";
+    const y = nums[0] ?? columns[1] ?? columns[0] ?? "";
+    return { x, y };
   },
 
   component: BarChart,

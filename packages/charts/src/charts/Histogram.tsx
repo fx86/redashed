@@ -81,7 +81,7 @@ export const histogramDefinition: ChartDefinition<HistogramConfig> = {
 
   deriveConfig(columns, data) {
     const nums = columns.filter((c) => inferKind(data.map((r) => r[c])) === "number");
-    return { x: nums[0] };
+    return { x: nums[0] ?? columns[0] ?? "" };
   },
 
   component: Histogram,
