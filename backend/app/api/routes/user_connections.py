@@ -112,6 +112,28 @@ def get_schema(connection_id: str, user=Depends(get_current_user)):
     return SchemaResponse(tables=tables)
 
 
+@router.get("/{connection_id}/ping")
+def ping_connection(connection_id: str, user=Depends(get_current_user)):
+    """Lightweight liveness check — runs SELECT 1 against the connection."""
+    row = _load_connection(connection_id, user["user_id"])
+    db_type = row.get("db_type")
+    try:
+        if db_type in ("datagov", "flat_file"):
+            import os
+            import psycopg2
+            conn = psycopg2.connect(os.environ["DATABASE_URL"])
+            conn.close()
+        else:
+            params = _params_from_row(row)
+            conn = connection_service.build_connection(params)
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            conn.close()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 @router.post("/{connection_id}/query", response_model=QueryResponse)
 def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user=Depends(get_current_user)):
     row = _load_connection(connection_id, user["user_id"])

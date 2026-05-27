@@ -5,11 +5,26 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
   listUserConnections, createUserConnection, deleteUserConnection,
-  listUploads, deleteUpload,
+  listUploads, deleteUpload, pingConnection,
 } from "@/lib/api";
 import type { SavedConnection, Upload } from "@/lib/api";
+
+type PingStatus = "checking" | "ok" | "error";
 import Nav from "@/components/Nav";
 import SavedConnectionForm from "@/components/SavedConnectionForm";
+
+function StatusDot({ status }: { status: PingStatus | undefined }) {
+  if (!status) return null;
+  const cls =
+    status === "ok" ? "bg-emerald-500" :
+    status === "error" ? "bg-red-500" :
+    "bg-gray-600 animate-pulse";
+  const title =
+    status === "ok" ? "Connected" :
+    status === "error" ? "Connection error" :
+    "Checking…";
+  return <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cls}`} title={title} />;
+}
 
 export default function ConnectionsPage() {
   const { user, session, loading: authLoading } = useAuth();
@@ -24,6 +39,7 @@ export default function ConnectionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: "connection"; item: SavedConnection } | { type: "upload"; item: Upload } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pingStatus, setPingStatus] = useState<Record<string, PingStatus>>({});
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -35,8 +51,18 @@ export default function ConnectionsPage() {
     if (!jwt) return;
     Promise.all([listUserConnections(jwt), listUploads(jwt)])
       .then(([conns, ups]) => {
-        setConnections(conns.filter((c) => c.db_type !== "flat_file"));
+        const filtered = conns.filter((c) => c.db_type !== "flat_file");
+        setConnections(filtered);
         setUploads(ups);
+        // Initialise all as checking, then ping in parallel
+        const initial: Record<string, PingStatus> = {};
+        filtered.forEach((c) => { initial[c.id] = "checking"; });
+        setPingStatus(initial);
+        filtered.forEach((c) => {
+          pingConnection(jwt, c.id)
+            .then((r) => setPingStatus((prev) => ({ ...prev, [c.id]: r.ok ? "ok" : "error" })))
+            .catch(() => setPingStatus((prev) => ({ ...prev, [c.id]: "error" })));
+        });
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -142,6 +168,7 @@ export default function ConnectionsPage() {
             >
               <div>
                 <div className="flex items-center gap-1.5">
+                  <StatusDot status={pingStatus[conn.id]} />
                   <p className="text-sm font-medium">{conn.name}</p>
                   <span className={`text-[10px] rounded px-1 leading-4 border ${
                     conn.db_type === "datagov"

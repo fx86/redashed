@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { QueryResponse } from "@/lib/api";
 
+const PAGE_SIZE = 500;
+
 interface Props {
   result: QueryResponse;
 }
@@ -14,6 +16,10 @@ function isNumericCell(value: unknown): boolean {
 
 export default function ResultsTable({ result }: Props) {
   const [showSql, setShowSql] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const visibleRows = result.rows.slice(0, visibleCount);
+  const remaining = result.rows.length - visibleCount;
 
   return (
     <div className="space-y-2">
@@ -36,6 +42,9 @@ export default function ResultsTable({ result }: Props) {
           {result.execution_time_ms > 0 && (
             <span className="ml-2 text-gray-700">· {result.execution_time_ms}ms</span>
           )}
+          {result.rows.length > PAGE_SIZE && (
+            <span className="ml-2 text-gray-700">· showing {visibleRows.length.toLocaleString()}</span>
+          )}
         </p>
       </div>
 
@@ -51,7 +60,7 @@ export default function ResultsTable({ result }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
-            {result.rows.map((row, i) => (
+            {visibleRows.map((row, i) => (
               <tr key={i} className="hover:bg-gray-900/50">
                 {row.map((cell, j) => (
                   <td
@@ -66,6 +75,16 @@ export default function ResultsTable({ result }: Props) {
           </tbody>
         </table>
       </div>
+
+      {remaining > 0 && (
+        <button
+          onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+          className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-700 rounded-lg transition-colors"
+        >
+          Load {Math.min(remaining, PAGE_SIZE).toLocaleString()} more
+          <span className="ml-1 text-gray-700">({remaining.toLocaleString()} remaining)</span>
+        </button>
+      )}
     </div>
   );
 }

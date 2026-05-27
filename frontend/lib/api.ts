@@ -113,6 +113,11 @@ export async function deleteUserConnection(jwt: string, id: string): Promise<voi
   await fetch(`${BASE}/user-connections/${id}`, { method: "DELETE", headers: authHeaders(jwt) });
 }
 
+export async function pingConnection(jwt: string, id: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${BASE}/user-connections/${id}/ping`, { headers: authHeaders(jwt) });
+  return handleResponse<{ ok: boolean; error?: string }>(res);
+}
+
 export async function runSavedConnectionQuery(
   jwt: string,
   connectionId: string,

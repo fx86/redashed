@@ -53,6 +53,7 @@ export function ScatterPlot({ data, config, theme }: ChartProps) {
           r: 3,
           stroke: "none",
         }),
+        Plot.tip(data, Plot.pointer({ x, y, fill: theme.background, stroke: theme.axis })),
       ],
       x: {
         label: null,

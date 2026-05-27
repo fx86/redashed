@@ -58,6 +58,7 @@ export function BarChart({ data, config, theme }: ChartProps) {
           fill: theme.axis,
           fontSize: 11,
         }),
+        Plot.tip(sorted, Plot.pointer({ y: x, x: y, fill: theme.background, stroke: theme.axis })),
       ],
       x: { axis: null, label: null },
       y: { label: null, tickSize: 0 },

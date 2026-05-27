@@ -38,6 +38,7 @@ export function LineChart({ data, config, theme }: ChartProps) {
 
     const marks: Plot.Markish[] = [
       Plot.lineY(data, { x, y, stroke: theme.ink, strokeWidth: 1.5 }),
+      Plot.tip(data, Plot.pointerX({ x, y, fill: theme.background, stroke: theme.axis })),
     ];
 
     // "uniform" / "none" — clean line with no accent dot

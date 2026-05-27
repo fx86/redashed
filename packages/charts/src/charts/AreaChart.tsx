@@ -54,6 +54,7 @@ export function AreaChart({ data, config, theme }: ChartProps) {
           stroke: theme.ink,
           strokeWidth: 1.5,
         }),
+        Plot.tip(data, Plot.pointerX({ x, y, fill: theme.background, stroke: theme.axis })),
       ],
       x: xIsDate
         ? { type: "utc", label: null, tickSize: 0, ticks: 4 }

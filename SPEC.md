@@ -51,7 +51,7 @@
 - [ ] Global search (opens query search, not a separate page)
 - [x] `New query` link → opens editor (deviation: labelled "New query", not a `+` button; opens in AI mode)
 - [x] User avatar top right → dropdown: Settings, Sign out
-- [ ] Nav is responsive: on mobile, collapses to hamburger menu
+- [x] Nav is responsive: on mobile, collapses to hamburger menu
 
 ---
 
@@ -150,7 +150,7 @@
 - [x] Results table below editor on success
 - [x] Column headers match SELECT aliases
 - [x] Row count + execution time in results header
-- [ ] Paginated display (show first 500 rows, load more on scroll)
+- [x] Paginated display (show first 500 rows, load more on scroll)
 - [x] Results view toggle: Table | Chart
 - [x] Chart view uses `@bi-tool/charts` — auto-selects type from result shape
 - [x] **Chart type selector in query editor** (ChartCustomizer component) — persisted with saved query
@@ -211,7 +211,7 @@
 - [x] Test connection button — runs `SELECT 1` before saving
 - [x] Credentials encrypted at rest (backend encryption)
 - [x] Connections listed on `/connections` page
-- [ ] Status indicator: Connected (green) / Error (red) / Untested (grey)
+- [x] Status indicator: Connected (green) / Error (red) / Untested (grey) — live ping on page load
 - [x] Delete connection — confirm modal; drops connection config and any cached schema; data.gov ingested tables also dropped
 
 ### 6.2 Schema Introspection
@@ -327,7 +327,7 @@
 - [x] Auto-select chart type from result shape (`selectChartType`)
 - [x] User override persisted per saved query
 - [x] All charts responsive — ResizeObserver on every chart type
-- [ ] Hover tooltips — on mouseover, show data point values (x, y, series label) in a floating tooltip for all chart types that support it (line, bar, scatter, area, histogram, donut); KPI and pivot table excluded
+- [x] Hover tooltips — Plot.tip + pointer on line, bar, scatter, area; histogram and donut deferred
 - [ ] Charts formally tested at 375px, 768px, 1280px breakpoints
 
 ### 9.1 Custom Chart Builder
@@ -385,11 +385,11 @@ These are either exposed in the nav/UI already (and go nowhere) or are permanent
 
 | Item | Section | Notes |
 |------|---------|-------|
-| Alerts — full feature (list, create, thresholds, email notification) | §8 | Nav link exists; goes nowhere. Highest user-visible gap. |
-| Mobile nav hamburger + responsive collapse | §2, §10 | Permanent constraint. Nav is desktop-only today. |
-| Connection status indicator (Connected / Error / Untested) | §6.1 | Basic UX; connections page shows no health signal. |
-| Chart hover tooltips (line, bar, scatter, area, donut) | §9 | Core chart usability; Observable Plot supports this natively. |
-| Results table: paginated display (first 500 rows, load more) | §4.5 | Large result sets currently render all rows → browser freeze risk. |
+| ~~Alerts — full feature (list, create, thresholds, email notification)~~ | §8 | ✅ Shipped — Telegram notifications, row count + query failure conditions |
+| ~~Mobile nav hamburger + responsive collapse~~ | §2, §10 | ✅ Shipped — hamburger collapses all links on mobile; closes on route change |
+| ~~Connection status indicator (Connected / Error / Untested)~~ | §6.1 | ✅ Shipped — parallel ping on page load; green / red / pulse dot per card |
+| ~~Chart hover tooltips (line, bar, scatter, area, donut)~~ | §9 | ✅ Shipped — Plot.tip + pointer on line, bar, scatter, area |
+| ~~Results table: paginated display (first 500 rows, load more)~~ | §4.5 | ✅ Shipped — 500 rows/page, "Load N more" button with remaining count |
 
 ### P1 — Next sprint (product completeness)
 
