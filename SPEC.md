@@ -222,11 +222,14 @@
 - [ ] Annotation dot: green = described, grey = unannotated
 
 ### 6.3 Schema Annotation
-- [ ] Editable table description (plain text)
-- [ ] Editable per-column description (plain text)
-- [ ] Completion indicator: X of Y columns annotated
+- [x] Editable table description (plain text)
+- [x] Editable per-column description (plain text)
+- [x] Completion indicator: X of Y columns annotated (per-table pip + overall progress bar)
 - [x] Annotations stored in DB, injected into AI prompts (backend annotation service)
 - [x] Annotations are optional — AI still works without them
+- [x] Dedicated annotation page at `/connections/[id]/schema` — full-width, all tables expanded, click-to-edit
+- [x] "Annotate" link per connection card on `/connections`
+- [x] Re-introspect button — refreshes live schema without leaving the page
 
 ---
 
@@ -397,8 +400,8 @@ Features that complete an already-shipped surface and unlock the analytics engin
 
 | Item | Section | Notes |
 |------|---------|-------|
-| Schema annotation UI — editable table + column descriptions | §6.3 | Backend annotation service already done; UI is the gap. Key to SQL quality. |
-| Manual re-introspect button on connections page | §6.2 | Engineers need to refresh schema after warehouse changes. |
+| ~~Schema annotation UI — editable table + column descriptions~~ | §6.3 | ✅ Shipped — `/connections/[id]/schema`, progress bar, click-to-edit, re-introspect |
+| ~~Manual re-introspect button on connections page~~ | §6.2 | ✅ Shipped — Re-introspect button on the annotation page |
 | Dashboard filter bar | §3.6 | Core dashboard interactivity. Reserve layout space first (§3.1 note). |
 | Query chaining — multiple chart views from one query result | §4.7 | High leverage: one query → multiple dashboard tiles. Build after filter bar. |
 | Pre-run scan size estimate | §4.4 | Cost/safety signal before hitting the warehouse. Snowflake + BQ support this natively. |
