@@ -169,14 +169,29 @@
 - [x] "Add to dashboard" button → dashboard picker modal
 - [x] Error state: warehouse error shown inline, SQL editor stays editable
 
-### 4.7 Query Chaining (Multiple Charts from One Query)
-- [ ] After a query runs, user can create multiple "views" of the same result — each with a different chart type and column mapping
-- [ ] Each view is a named chart (e.g. "Revenue by Month — Line", "Revenue by Month — Bar")
-- [ ] All views share one underlying query execution result; re-running updates all
-- [ ] Each view can be independently added to a dashboard as a separate tile
-- [ ] Views listed in a tabbed or card layout below the results pane
-- [ ] "Add view" button clones the current chart config as a starting point
-- [ ] Views are persisted alongside the saved query; no separate query object created
+### 4.5.1 Multiple Chart Views (Same Query)
+- [x] "+ Add chart view" button appears after a query runs ✅
+- [x] Each extra view has its own chart type selector and ChartCustomizer ✅
+- [x] All views share one underlying result set — no re-query ✅
+- [x] PNG download per view ✅
+- [x] Extra views reset on new query run ✅
+- [ ] Each view independently addable to a dashboard as a separate tile (deferred — currently primary view only)
+
+### 4.7 Query Chaining (Multi-Query Merge)
+> Intent: combine results from two independent queries — potentially from different connections — into a single merged output for visualisation.
+
+- [ ] Query A panel + Query B panel in the editor; each runs independently against its own connection
+- [ ] Join config: user picks the shared column key, join type (inner / left / right)
+- [ ] Client-side merge: in-memory join of result arrays (like pandas `.merge()`) — no warehouse round-trip
+- [ ] Merged result feeds into the standard chart/table view and can be saved or added to a dashboard
+- [ ] Works cross-connection (Query A from Postgres, Query B from a flat file upload, etc.)
+- [ ] AI assist (optional, toggle): given two result schemas, suggest the join key and type
+- [ ] **Edge cases:**
+  - Columns with the same name in both results (non-key) — suffix with `_a` / `_b`
+  - No common column found — show a warning, allow manual key entry
+  - One result set is empty — merged result is empty (inner) or equals the non-empty set (left/right)
+  - Key column has type mismatch (numeric vs string) — coerce to string before comparing, surface a warning
+  - Result exceeds 50k rows after merge — warn and truncate to 50k
 
 ### 4.6 Query Persistence
 - [x] Unsaved changes indicator (amber dot on Save button)
@@ -414,7 +429,8 @@ Features that complete an already-shipped surface and unlock the analytics engin
 | ~~Schema annotation UI — editable table + column descriptions~~ | §6.3 | ✅ Shipped — `/connections/[id]/schema`, progress bar, click-to-edit, re-introspect |
 | ~~Manual re-introspect button on connections page~~ | §6.2 | ✅ Shipped — Re-introspect button on the annotation page |
 | ~~Dashboard filter bar~~ | §3.6 | ✅ Shipped — client-side filters, URL-sync, column type inference |
-| ~~Query chaining — multiple chart views from one query result~~ | §4.7 | ✅ Shipped — "+ Add chart view" adds independent views from same result; each has own type selector + ChartCustomizer + PNG download. Resets on new query. Primary view still used for Save/Add-to-dashboard. |
+| ~~Multiple chart views (same query result)~~ | §4.5.1 | ✅ Shipped — "+ Add chart view" button; each view has own type selector + ChartCustomizer + PNG. Resets on new run. |
+| Query chaining — client-side merge of two query results | §4.7 | Cross-connection join in-memory. Query A + Query B → pick join key + type → merged result for chart/dashboard. Edge cases documented in §4.7. |
 | Pre-run scan size estimate | §4.4 | Cost/safety signal before hitting the warehouse. Snowflake + BQ support this natively. |
 | SQL mode: global search across title + SQL content | §5 | Current search is title-only; engineers need to find queries by SQL pattern. |
 | ~~Dashboard tile: "Edit query" link~~ | §3.3 | ✅ Shipped — always-visible "Edit →" text link in every tile header (mobile + desktop). |
