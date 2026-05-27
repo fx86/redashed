@@ -374,6 +374,69 @@ Follow this order. Each phase should be demo-able.
 
 ---
 
+## Priority Backlog
+
+> Remaining work ordered by impact and dependency. Build P0 before P1, P1 before P2. P3 is deferred v2.
+> Update tier as priorities shift — never leave this stale.
+
+### P0 — Ship now (visible gaps, broken promises)
+
+These are either exposed in the nav/UI already (and go nowhere) or are permanent constraints that can't ship violated.
+
+| Item | Section | Notes |
+|------|---------|-------|
+| Alerts — full feature (list, create, thresholds, email notification) | §8 | Nav link exists; goes nowhere. Highest user-visible gap. |
+| Mobile nav hamburger + responsive collapse | §2, §10 | Permanent constraint. Nav is desktop-only today. |
+| Connection status indicator (Connected / Error / Untested) | §6.1 | Basic UX; connections page shows no health signal. |
+| Chart hover tooltips (line, bar, scatter, area, donut) | §9 | Core chart usability; Observable Plot supports this natively. |
+| Results table: paginated display (first 500 rows, load more) | §4.5 | Large result sets currently render all rows → browser freeze risk. |
+
+### P1 — Next sprint (product completeness)
+
+Features that complete an already-shipped surface and unlock the analytics engineer workflow.
+
+| Item | Section | Notes |
+|------|---------|-------|
+| Schema annotation UI — editable table + column descriptions | §6.3 | Backend annotation service already done; UI is the gap. Key to SQL quality. |
+| Manual re-introspect button on connections page | §6.2 | Engineers need to refresh schema after warehouse changes. |
+| Dashboard filter bar | §3.6 | Core dashboard interactivity. Reserve layout space first (§3.1 note). |
+| Query chaining — multiple chart views from one query result | §4.7 | High leverage: one query → multiple dashboard tiles. Build after filter bar. |
+| Pre-run scan size estimate | §4.4 | Cost/safety signal before hitting the warehouse. Snowflake + BQ support this natively. |
+| SQL mode: global search across title + SQL content | §5 | Current search is title-only; engineers need to find queries by SQL pattern. |
+| Dashboard tile: "Edit query" context menu item | §3.3 | Closes the loop from dashboard → editor. Currently no path back. |
+
+### P2 — Growth features (expand capability)
+
+Unlock new user segments or significantly raise the ceiling of existing workflows.
+
+| Item | Section | Notes |
+|------|---------|-------|
+| Additional warehouse connectors: Snowflake, BigQuery | §6.1 | Broadens addressable user base. Snowflake first (largest enterprise share). |
+| Custom chart builder (Monaco editor, sandbox iframe preview) | §9.1 | Power-user feature; high delight. Build after core chart tooltips. |
+| Query versioning — last 10 versions, history dropdown | §4.6 | Safety net. Backend stores queries; add version column + list endpoint. |
+| Dashboard auto-refresh (30s / 1m / 5m / 30m) | §3.4 | Live dashboard use case. Straightforward once dashboard is solid. |
+| Star / favourite queries + dashboards | §3.1, §5 | Discovery and personalisation. Simple DB flag + sort order change. |
+| Multiple AI provider keys (one per provider, active selectable) | §8.1 | Power users want OpenAI for some queries, DeepSeek for others. |
+| Share query by email → read-only token link | §5 | Collaboration primitive. Requires user lookup endpoint. |
+
+### P3 — Deferred v2 (validated ideas, not yet prioritised)
+
+Built into the spec but not on the immediate roadmap. Revisit after P2 ships.
+
+| Item | Section | Notes |
+|------|---------|-------|
+| World Bank data portal connector | §6c | Public data expansion. Same ingestion pattern as data.gov. |
+| India Open Data (data.gov.in) connector | §6d | Regional data expansion. Same pattern. |
+| Cross-dataset query (multi-source virtual connection) | §6e | Requires §6c/§6d to be useful. |
+| Collaborative query combining (join two tiles) | §6f | Advanced collaboration. Depends on sharing + join schema. |
+| Onboarding wizard (3-step: connection → test → introspect) | §1.3 | Reduces time-to-first-query for new users. Low urgency while user base is small. |
+| Dashboard share by email (invite collaborator) | §3.5 | Requires user lookup endpoint. |
+| "Shared with me" queries tab | §5 | Requires query sharing (P2) to be useful. |
+| Email + password sign up + forgot password | §1.1, §1.2 | Google OAuth covers all current users. |
+| AI explain SQL (NL explanation of generated query) | Deferred | Nice to have; low query-quality impact. |
+
+---
+
 ## Deferred / Descoped
 
 Items considered but not in scope for v1:
