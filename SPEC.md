@@ -63,7 +63,7 @@
 - [x] `/dashboard` route — full-page card grid (deviation: route is `/dashboard` not `/dashboards`)
 - [ ] Each card shows: dashboard name, tile count, last updated, owner avatar (name + last updated shown; tile count and avatar not yet)
 - [x] Clicking a card opens the dashboard in full-page view
-- [ ] Dashboard full-page view will incorporate filter bar in future (§3.6); layout must reserve space for it
+- [x] Dashboard full-page view incorporates filter bar above tile grid (§3.6) ✅
 - [x] Create new dashboard button — name-only modal, tiles added after
 - [ ] Favourite/star a dashboard (starred dashboards appear at top of list)
 - [x] Delete dashboard — confirm modal; owner only
@@ -86,12 +86,13 @@
 - [ ] **Chart type selection lives in the query editor, not the dashboard tile.** Dashboard tiles display the chart type chosen at query save time. Changing chart type requires going back to the query editor. The tile shows no chart-type switcher UI — just the chart, title, and a context menu with "Edit query" and "Remove". (Deviation from current implementation — current build has chart switcher on each tile, which is noisy.)
 
 ### 3.6 Dashboard Filters
-- [ ] Dashboard-level filter bar above the tile grid
-- [ ] Users can add filters from any column used in the dashboard's queries
-- [ ] Filter type auto-detected from column data type: date range picker (date/timestamp), dropdown (low-cardinality text), text search (high-cardinality text), numeric range (number)
-- [ ] Filters applied client-side where possible; for server-side filtering, re-run the query with a WHERE clause injected
-- [ ] Filter state preserved in URL (shareable filtered dashboard links)
-- [ ] "Clear all filters" button
+- [x] Dashboard-level filter bar above the tile grid ✅ `DashboardFilterBar.tsx`
+- [x] Users can add filters from any column used in the dashboard's queries ✅ column picker across all tile results
+- [x] Filter type auto-detected: dropdown (≤15 unique strings), numeric range (all-numeric columns), text search (high-cardinality) ✅ `deriveColumnMeta()`
+- [x] Filters applied client-side — `applyFilters()` runs in a `useMemo` against loaded rows ✅
+- [x] Filter state preserved in URL via base64-encoded JSON (`?filters=`) — shareable ✅
+- [x] "Clear all filters" button ✅
+- [ ] Date/timestamp range picker (deferred — currently falls through to text search)
 
 ### 3.5 Dashboard Permissions
 - [x] Creator owns the dashboard; only they can change chart type, resize tiles, delete tiles/dashboard
@@ -402,7 +403,7 @@ Features that complete an already-shipped surface and unlock the analytics engin
 |------|---------|-------|
 | ~~Schema annotation UI — editable table + column descriptions~~ | §6.3 | ✅ Shipped — `/connections/[id]/schema`, progress bar, click-to-edit, re-introspect |
 | ~~Manual re-introspect button on connections page~~ | §6.2 | ✅ Shipped — Re-introspect button on the annotation page |
-| Dashboard filter bar | §3.6 | Core dashboard interactivity. Reserve layout space first (§3.1 note). |
+| ~~Dashboard filter bar~~ | §3.6 | ✅ Shipped — client-side filters, URL-sync, column type inference |
 | Query chaining — multiple chart views from one query result | §4.7 | High leverage: one query → multiple dashboard tiles. Build after filter bar. |
 | Pre-run scan size estimate | §4.4 | Cost/safety signal before hitting the warehouse. Snowflake + BQ support this natively. |
 | SQL mode: global search across title + SQL content | §5 | Current search is title-only; engineers need to find queries by SQL pattern. |

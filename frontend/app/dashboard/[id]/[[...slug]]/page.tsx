@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ResponsiveGridLayout } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
@@ -27,6 +27,12 @@ import type { ChartConfig, ChartType } from "@bi-tool/charts";
 import ChartView from "@/components/ChartView";
 import Nav from "@/components/Nav";
 import { downloadCSV, downloadChartImage, slugFilename } from "@/lib/export";
+import {
+  DashboardFilterBar,
+  deriveColumnMeta,
+  applyFilters,
+} from "@/components/DashboardFilterBar";
+import type { FilterState, FilterValue } from "@/components/DashboardFilterBar";
 
 export default function DashboardViewPage() {
   const { user, session, loading: authLoading } = useAuth();
@@ -45,6 +51,7 @@ export default function DashboardViewPage() {
   const [tileErrors, setTileErrors] = useState<Record<string, string>>({});
   const [pageLoading, setPageLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({});
 
   // Inline title editing
   const [editingTitle, setEditingTitle] = useState(false);
@@ -72,6 +79,13 @@ export default function DashboardViewPage() {
   dashboardRef.current = dashboard;
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Read filter state from URL on mount
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("filters");
+    if (!raw) return;
+    try { setFilters(JSON.parse(atob(raw))); } catch {}
+  }, []);
 
   // containerRef mounts after pageLoading=false; re-measure once it's in the DOM
   useEffect(() => {
@@ -218,6 +232,44 @@ export default function DashboardViewPage() {
     } catch {}
   }
 
+  function handleFilterChange(col: string, value: FilterValue | null) {
+    setFilters((prev) => {
+      const next = { ...prev };
+      if (value === null) delete next[col];
+      else next[col] = value;
+      const url = new URL(window.location.href);
+      if (Object.keys(next).length > 0) url.searchParams.set("filters", btoa(JSON.stringify(next)));
+      else url.searchParams.delete("filters");
+      window.history.replaceState(null, "", url.toString());
+      return next;
+    });
+  }
+
+  function handleClearFilters() {
+    setFilters({});
+    const url = new URL(window.location.href);
+    url.searchParams.delete("filters");
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  const columnMeta = useMemo(() => {
+    const columnsList = tiles.map((t) => results[t.id]?.columns ?? []);
+    const rowsList = tiles.map((t) => results[t.id]?.rows ?? []);
+    return deriveColumnMeta(columnsList, rowsList);
+  }, [tiles, results]);
+
+  const filteredResults = useMemo((): Record<string, QueryResponse> => {
+    if (Object.keys(filters).length === 0) return results;
+    const out: Record<string, QueryResponse> = {};
+    for (const tile of tiles) {
+      const r = results[tile.id];
+      if (!r) continue;
+      const filteredRows = applyFilters(r.columns, r.rows, filters);
+      out[tile.id] = { ...r, rows: filteredRows, row_count: filteredRows.length };
+    }
+    return out;
+  }, [results, filters, tiles]);
+
   if (!mounted || authLoading || pageLoading) {
     return (
       <main className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -326,6 +378,16 @@ export default function DashboardViewPage() {
         </div>
       </div>
 
+      {/* Filter bar */}
+      {Object.keys(results).length > 0 && (
+        <DashboardFilterBar
+          columns={columnMeta}
+          filters={filters}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
+      )}
+
       {/* Tile grid */}
       <div className="flex-1 p-4 max-w-[1080px] mx-auto w-full">
         <div ref={containerRef}>
@@ -349,7 +411,7 @@ export default function DashboardViewPage() {
                     return ay !== by ? ay - by : (a.layout?.x ?? 0) - (b.layout?.x ?? 0);
                   })
                   .map((tile) => {
-                    const res = results[tile.id];
+                    const res = filteredResults[tile.id];
                     const config = chartConfigs[tile.id] ?? { type: "table" };
                     const ct = config.type as ChartType;
                     const isLoading = tileLoading[tile.id];
@@ -421,7 +483,7 @@ export default function DashboardViewPage() {
               onLayoutChange={canEdit ? handleLayoutChange : undefined}
             >
               {tiles.map((tile) => {
-                const res = results[tile.id];
+                const res = filteredResults[tile.id];
                 const config = chartConfigs[tile.id] ?? { type: "table" };
                 const ct = config.type as ChartType;
                 const isLoading = tileLoading[tile.id];
@@ -469,17 +531,17 @@ export default function DashboardViewPage() {
                         >
                           <ExternalLinkIcon />
                         </a>
-                        {results[tile.id] && (
+                        {res && (
                           <button
                             onMouseDown={(e) => e.stopPropagation()}
-                            onClick={() => downloadCSV(results[tile.id].columns, results[tile.id].rows, slugFilename(tile.question, "csv"))}
+                            onClick={() => downloadCSV(res.columns, res.rows, slugFilename(tile.question, "csv"))}
                             title="Download CSV"
                             className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
                           >
                             <TileDownloadIcon />
                           </button>
                         )}
-                        {results[tile.id] && ct !== "table" && (
+                        {res && ct !== "table" && (
                           <button
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={() => { const el = chartRefs.current.get(tile.id); if (el) downloadChartImage(el, slugFilename(tile.question, "png")); }}
