@@ -131,6 +131,12 @@
 - [ ] Snippet template syntax: `{{variable_name}}` placeholders extracted at insert time (client-side regex)
 - [ ] Variable fill-in form: free text by default; schema-aware dropdowns for `{{schema}}`, `{{table}}`, `{{column}}` placeholders using current connection's cached schema
 - [ ] Save snippet: name + SQL template (with or without placeholders); selection shortcut saves highlighted text
+- [ ] **Edge cases:**
+  - Snippet with no `{{...}}` tokens inserts immediately — skip fill-in form entirely
+  - No cached schema for the current connection → fall back to free-text for all placeholder fields
+  - Variable names are case-insensitive at match time (`{{Table}}` and `{{table}}` treated as the same placeholder in the fill-in form); stored as-written in the template
+  - `{{column}}` is ambiguous without a table — if `{{table}}` is also present, resolve table first and narrow the column dropdown to that table's columns; if no `{{table}}` in the snippet, show a flat list of all columns across the schema
+  - Duplicate placeholder names in a single snippet (e.g. `{{table}}` appears three times) — one input field, substituted everywhere on confirm
 
 ### 4.3 Ask AI Mode
 - [x] Natural language text input shown above SQL editor
