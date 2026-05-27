@@ -96,6 +96,8 @@ Start the backend:
 uvicorn app.main:app --reload --port 8000
 ```
 
+> **TODO (Telegram alerts):** To use the Alerts feature, create a Telegram bot via [@BotFather](https://t.me/BotFather) and note the bot token. Get your chat ID by messaging [@userinfobot](https://t.me/userinfobot) after starting a chat with your bot. No env vars needed — credentials are entered per-alert in the UI and stored encrypted.
+
 ### 3. Frontend
 
 ```bash
@@ -109,6 +111,10 @@ Create `frontend/.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Optional — enables the feedback button (bottom-right on every page)
+# TODO: create a Google Form at https://forms.google.com, copy its share URL here
+NEXT_PUBLIC_FEEDBACK_FORM_URL=
 ```
 
 Start the frontend:
