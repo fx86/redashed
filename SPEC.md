@@ -127,6 +127,7 @@
 - [x] SQL is editable directly
 - [x] No NL input shown in SQL mode
 - [x] Switching from AI mode → SQL mode preserves SQL in pane
+- [ ] Snippet library — collapsible panel listing saved fragments; click inserts at cursor, Cmd+S on selection saves as new snippet
 
 ### 4.3 Ask AI Mode
 - [x] Natural language text input shown above SQL editor
@@ -420,6 +421,7 @@ Unlock new user segments or significantly raise the ceiling of existing workflow
 | Query versioning — last 10 versions, history dropdown | §4.6 | Safety net. Backend stores queries; add version column + list endpoint. |
 | Dashboard auto-refresh (30s / 1m / 5m / 30m) | §3.4 | Live dashboard use case. Straightforward once dashboard is solid. |
 | Star / favourite queries + dashboards | §3.1, §5 | Discovery and personalisation. Simple DB flag + sort order change. |
+| Query snippets — save + insert reusable SQL fragments | §4.2 | Analytics engineers reuse the same JOINs, CTEs, and WHERE clauses constantly. Snippet library panel in the editor: save a selection as a named snippet, click to insert at cursor. Stored per-user in local DB. |
 | Multiple AI provider keys (one per provider, active selectable) | §8.1 | Power users want OpenAI for some queries, DeepSeek for others. |
 | Share query by email → read-only token link | §5 | Collaboration primitive. Requires user lookup endpoint. |
 
