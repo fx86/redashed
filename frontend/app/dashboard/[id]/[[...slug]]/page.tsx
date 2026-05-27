@@ -28,9 +28,12 @@ import ChartView from "@/components/ChartView";
 import Nav from "@/components/Nav";
 import { downloadCSV, downloadChartImage, slugFilename } from "@/lib/export";
 import {
-  DashboardFilterBar,
+  DashboardFilterPanel,
+  FilterToggleButton,
+  TileFilterDot,
   deriveColumnMeta,
   applyFilters,
+  activeFilterCount,
 } from "@/components/DashboardFilterBar";
 import type { FilterState, FilterValue } from "@/components/DashboardFilterBar";
 
@@ -52,6 +55,7 @@ export default function DashboardViewPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   // Inline title editing
   const [editingTitle, setEditingTitle] = useState(false);
@@ -80,11 +84,14 @@ export default function DashboardViewPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Read filter state from URL on mount
+  // Read filter state from URL on mount; open panel when filters are present
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("filters");
     if (!raw) return;
-    try { setFilters(JSON.parse(atob(raw))); } catch {}
+    try {
+      setFilters(JSON.parse(atob(raw)));
+      setFilterPanelOpen(true);
+    } catch {}
   }, []);
 
   // containerRef mounts after pageLoading=false; re-measure once it's in the DOM
@@ -336,6 +343,15 @@ export default function DashboardViewPage() {
               <span className="text-[10px] text-indigo-400/70 font-medium px-1.5 py-0.5 bg-indigo-950/50 rounded">shared</span>
             )}
 
+            {/* Filter toggle — only shown when tiles have loaded */}
+            {Object.keys(results).length > 0 && (
+              <FilterToggleButton
+                activeCount={activeFilterCount(filters)}
+                isOpen={filterPanelOpen}
+                onClick={() => setFilterPanelOpen((v) => !v)}
+              />
+            )}
+
             {/* Edit mode toggle — only shown to users with edit permission */}
             {dashboard.can_edit && (
               <button
@@ -378,9 +394,9 @@ export default function DashboardViewPage() {
         </div>
       </div>
 
-      {/* Filter bar */}
-      {Object.keys(results).length > 0 && (
-        <DashboardFilterBar
+      {/* Filter panel — slide-down below header, toggle via header button */}
+      {filterPanelOpen && Object.keys(results).length > 0 && (
+        <DashboardFilterPanel
           columns={columnMeta}
           filters={filters}
           onChange={handleFilterChange}
@@ -441,6 +457,7 @@ export default function DashboardViewPage() {
                               {tile.question}
                             </a>
                           )}
+                          <TileFilterDot filters={filters} columns={res?.columns ?? []} />
                           <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             <a href={`/?query_id=${tile.saved_query_id}`} title="Open query" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors">
                               <ExternalLinkIcon />
@@ -522,6 +539,7 @@ export default function DashboardViewPage() {
                           {tile.question}
                         </a>
                       )}
+                      <TileFilterDot filters={filters} columns={res?.columns ?? []} />
                       <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a
                           href={`/?query_id=${tile.saved_query_id}`}
