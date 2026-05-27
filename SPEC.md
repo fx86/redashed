@@ -178,20 +178,21 @@
 - [ ] Each view independently addable to a dashboard as a separate tile (deferred — currently primary view only)
 
 ### 4.7 Query Chaining (Multi-Query Merge)
-> Intent: combine results from two independent queries — potentially from different connections — into a single merged output for visualisation.
+> Intent: combine two queries on the same connection into a single merged output via CTE generation. The builder produces standard SQL — no client-side merge, no new backend. v1 = same connection only.
 
-- [ ] Query A panel + Query B panel in the editor; each runs independently against its own connection
-- [ ] Join config: user picks the shared column key, join type (inner / left / right)
-- [ ] Client-side merge: in-memory join of result arrays (like pandas `.merge()`) — no warehouse round-trip
-- [ ] Merged result feeds into the standard chart/table view and can be saved or added to a dashboard
-- [ ] Works cross-connection (Query A from Postgres, Query B from a flat file upload, etc.)
-- [ ] AI assist (optional, toggle): given two result schemas, suggest the join key and type
+- [ ] "Chain" mode added to the mode toggle pill alongside "Ask AI" and "Write SQL"
+- [ ] Chain mode shows two SQL panels (Query A / Query B), each with its own Run button and mini result preview (row count + column list)
+- [ ] Join config: key column picker (dropdown of common column names if both run; text input fallback), join type selector (inner / left / right)
+- [ ] "Build merge query →" generates a CTE-based SQL, writes it into the Write SQL editor, and switches to Write SQL mode — user reviews before running
+- [ ] Generated SQL: `WITH query_a AS (...), query_b AS (...) SELECT * FROM query_a {JOIN_TYPE} JOIN query_b ON query_a.{key} = query_b.{key}`
+- [ ] User runs the generated CTE normally; result is a standard `QueryResponse` — chart, table, save, add-to-dashboard all work as-is
+- [ ] Saveable as a regular query — the CTE SQL is the persisted artifact; no special schema needed
+- [ ] **v2:** cross-connection merge (client-side join); restore chain mode when loading a saved query that contains the chain metadata in `chart_config`
 - [ ] **Edge cases:**
-  - Columns with the same name in both results (non-key) — suffix with `_a` / `_b`
-  - No common column found — show a warning, allow manual key entry
-  - One result set is empty — merged result is empty (inner) or equals the non-empty set (left/right)
-  - Key column has type mismatch (numeric vs string) — coerce to string before comparing, surface a warning
-  - Result exceeds 50k rows after merge — warn and truncate to 50k
+  - No common columns found → key picker shows empty, text input, warning: "No shared columns detected — enter key manually"
+  - One panel empty when "Build" clicked → validation error, highlight empty panel
+  - Duplicate non-key column names across A and B → generated SQL wraps with `query_a.*` + explicit `query_b.{col} AS {col}_b` for conflicts (requires both panels to have been run first; skips aliasing if run skipped)
+  - Join type "left" / "right" — label clearly which side is preserved in the picker
 
 ### 4.6 Query Persistence
 - [x] Unsaved changes indicator (amber dot on Save button)
