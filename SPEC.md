@@ -329,6 +329,69 @@
 
 ---
 
+## 11. Workspace & Admin
+
+> Multi-user access control. Users belong to a workspace. Admins control who can see what. v1 = one workspace per account; multi-workspace is v2.
+
+### 11.1 Workspace Model
+- [ ] Every user belongs to exactly one workspace (v1)
+- [ ] Workspace created automatically when the first user signs up (owner = that user)
+- [ ] Workspace has: `id`, `name`, `owner_user_id`, `created_at`
+- [ ] Workspace name editable in Settings → Workspace
+- [ ] `workspace_members` table: `workspace_id`, `user_id`, `role`, `invited_by`, `joined_at`
+
+### 11.2 Roles
+Three roles, applied per workspace member:
+
+| Role | Description |
+|------|-------------|
+| **Admin** | Full access. Invite/remove members, change roles, promote connections to workspace-level, see all dashboards and queries. |
+| **Editor** | Create and manage connections, write SQL, create/edit dashboards, publish queries workspace-wide. Cannot manage members. |
+| **Viewer** | Read-only. Can view dashboards and queries marked workspace-visible. Cannot write SQL, cannot see connections or credentials. |
+
+### 11.3 Admin Screen (`/admin`)
+- [ ] Only accessible to workspace Admins — redirect others to `/`
+- [ ] Members list: avatar/name, email, role badge, joined date, remove button
+- [ ] Invite by email: input + "Send invite" → Supabase `inviteUserByEmail()` — sends magic link; invited user joins workspace on first login
+- [ ] Pending invites section: list of emails awaiting acceptance, "Revoke" per invite
+- [ ] Role change: inline dropdown per member (cannot demote the last Admin)
+- [ ] Remove member: confirmation modal — removes from workspace, does not delete Supabase user
+- [ ] Transfer workspace ownership: Admin can assign a new owner (owner cannot be removed until ownership is transferred)
+
+### 11.4 Connection Visibility
+- [ ] Connections have a `visibility` field: `private` (default) or `workspace`
+- [ ] Private: only the creator and Admins can use it
+- [ ] Workspace: all members can query against it; Viewers can use it but never see credentials or the connection form
+- [ ] Admins can toggle any connection between private and workspace from the connections page
+- [ ] New connections default to `private`; creator prompted to promote on save
+
+### 11.5 Dashboard Visibility
+- [ ] Dashboards gain a `visibility` field: `private` (default), `workspace` (all members can view), or `link` (shareable read-only URL)
+- [ ] Viewers see all `workspace`-visibility dashboards in the dashboard list
+- [ ] Viewers cannot add/remove/resize tiles or rename dashboards — edit controls hidden
+- [ ] Admins see all dashboards regardless of visibility
+- [ ] Existing editor-sharing model (invite by user ID) remains for fine-grained edit access
+
+### 11.6 Query Visibility
+- [ ] Saved queries default to `private`
+- [ ] Editors can publish a query as `workspace` — appears in the shared Queries list for all members
+- [ ] Viewers see workspace-published queries; can run them but cannot edit SQL or save changes
+- [ ] Admin can unpublish any query
+
+### 11.7 Nav & Role-Gated UI
+- [ ] Admin nav link in top nav — only visible to Admins
+- [ ] "Connections" nav link hidden for Viewers (no access to connection management)
+- [ ] "Write SQL" mode hidden for Viewers — they only see pre-run saved queries and dashboards
+- [ ] Settings page scoped: Viewers see profile only; Editors see profile + AI keys; Admins see all including Workspace tab
+
+### 11.8 Backend Enforcement
+- [ ] Every API endpoint checks workspace membership — users cannot access resources outside their workspace
+- [ ] Role checked server-side for every mutation (create/edit/delete) — frontend hiding is UX only, not security
+- [ ] Connections API: returns credentials only to Admins and the connection creator; Viewers/Editors get connection name + type only
+- [ ] `workspace_id` scoped on all DB queries — no cross-workspace data leakage
+
+---
+
 ## 8. Settings
 - [x] Profile: name (editable), email (display), password change (email+password users only)
 - [ ] Workspace: name, logo
@@ -442,6 +505,7 @@ Unlock new user segments or significantly raise the ceiling of existing workflow
 
 | Item | Section | Notes |
 |------|---------|-------|
+| Workspace & admin — invite users, roles, visibility controls | §11 | Unlocks team usage. Three roles (Admin/Editor/Viewer), email invites via Supabase, connection + dashboard + query visibility scoping, `/admin` screen. Backend enforcement on all endpoints. |
 | Additional warehouse connectors: Snowflake, BigQuery | §6.1 | Broadens addressable user base. Snowflake first (largest enterprise share). |
 | Custom chart builder (Monaco editor, sandbox iframe preview) | §9.1 | Power-user feature; high delight. Build after core chart tooltips. |
 | Query versioning — last 10 versions, history dropdown | §4.6 | Safety net. Backend stores queries; add version column + list endpoint. |
