@@ -224,3 +224,44 @@ class AiKeyResponse(BaseModel):
     has_key: bool
     provider: Optional[str] = None
     model: Optional[str] = None
+
+
+# Alerts
+class AlertCreate(BaseModel):
+    name: str
+    saved_query_id: Optional[str] = None
+    connection_id: str
+    sql: str
+    condition_type: str  # 'row_count_above' | 'row_count_below' | 'query_failure'
+    threshold: int = 0
+    telegram_chat_id: str
+    telegram_bot_token: str  # plain text — encrypted on save
+
+
+class AlertUpdate(BaseModel):
+    name: Optional[str] = None
+    condition_type: Optional[str] = None
+    threshold: Optional[int] = None
+    is_active: Optional[bool] = None
+    telegram_chat_id: Optional[str] = None
+    telegram_bot_token: Optional[str] = None  # if set, re-encrypts
+
+
+class AlertResponse(BaseModel):
+    id: str
+    name: str
+    saved_query_id: Optional[str] = None
+    connection_id: str
+    sql: str
+    condition_type: str
+    threshold: int
+    telegram_chat_id: str
+    is_active: bool
+    last_checked_at: Optional[str] = None
+    last_fired_at: Optional[str] = None
+    created_at: str
+
+
+class TestTelegramRequest(BaseModel):
+    telegram_bot_token: str
+    telegram_chat_id: str

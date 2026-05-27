@@ -484,3 +484,83 @@ export async function upsertAiKey(
 export async function deleteAiKey(jwt: string): Promise<void> {
   await fetch(`${BASE}/settings/ai-key`, { method: "DELETE", headers: authHeaders(jwt) });
 }
+
+// ── Alerts ─────────────────────────────────────────────────────────────────────
+
+export interface Alert {
+  id: string;
+  name: string;
+  saved_query_id: string | null;
+  connection_id: string;
+  sql: string;
+  condition_type: "row_count_above" | "row_count_below" | "query_failure";
+  threshold: number;
+  telegram_chat_id: string;
+  is_active: boolean;
+  last_checked_at: string | null;
+  last_fired_at: string | null;
+  created_at: string;
+}
+
+export interface AlertCreate {
+  name: string;
+  saved_query_id?: string;
+  connection_id: string;
+  sql: string;
+  condition_type: "row_count_above" | "row_count_below" | "query_failure";
+  threshold?: number;
+  telegram_chat_id: string;
+  telegram_bot_token: string;
+}
+
+export async function listAlerts(jwt: string): Promise<Alert[]> {
+  const res = await fetch(`${BASE}/alerts`, { headers: authHeaders(jwt) });
+  return handleResponse<Alert[]>(res);
+}
+
+export async function createAlert(jwt: string, body: AlertCreate): Promise<Alert> {
+  const res = await fetch(`${BASE}/alerts`, {
+    method: "POST",
+    headers: authHeaders(jwt),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<Alert>(res);
+}
+
+export async function updateAlert(
+  jwt: string,
+  alertId: string,
+  body: Partial<AlertCreate & { is_active: boolean }>
+): Promise<Alert> {
+  const res = await fetch(`${BASE}/alerts/${alertId}`, {
+    method: "PATCH",
+    headers: authHeaders(jwt),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<Alert>(res);
+}
+
+export async function deleteAlert(jwt: string, alertId: string): Promise<void> {
+  await fetch(`${BASE}/alerts/${alertId}`, { method: "DELETE", headers: authHeaders(jwt) });
+}
+
+export async function runAlertNow(jwt: string, alertId: string): Promise<Alert> {
+  const res = await fetch(`${BASE}/alerts/${alertId}/run`, {
+    method: "POST",
+    headers: authHeaders(jwt),
+  });
+  return handleResponse<Alert>(res);
+}
+
+export async function testTelegram(
+  jwt: string,
+  telegram_bot_token: string,
+  telegram_chat_id: string
+): Promise<{ ok: boolean }> {
+  const res = await fetch(`${BASE}/alerts/test-telegram`, {
+    method: "POST",
+    headers: authHeaders(jwt),
+    body: JSON.stringify({ telegram_bot_token, telegram_chat_id }),
+  });
+  return handleResponse<{ ok: boolean }>(res);
+}

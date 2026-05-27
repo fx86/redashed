@@ -32,6 +32,24 @@ def _get_pool() -> ThreadedConnectionPool:
                         updated_at TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS alerts (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        saved_query_id TEXT,
+                        connection_id TEXT NOT NULL,
+                        sql TEXT NOT NULL,
+                        condition_type TEXT NOT NULL,
+                        threshold INTEGER DEFAULT 0,
+                        telegram_chat_id TEXT NOT NULL,
+                        telegram_bot_token_enc TEXT NOT NULL,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        last_checked_at TIMESTAMPTZ,
+                        last_fired_at TIMESTAMPTZ,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
             conn.commit()
             _tables_ready = True
         finally:
@@ -607,3 +625,134 @@ def delete_user_ai_key(user_id: str) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM user_ai_keys WHERE user_id = %s", (user_id,))
+
+
+# ── Alerts ─────────────────────────────────────────────────────────────────────
+
+def insert_alert(
+    user_id: str,
+    name: str,
+    saved_query_id: str | None,
+    connection_id: str,
+    sql: str,
+    condition_type: str,
+    threshold: int,
+    telegram_chat_id: str,
+    telegram_bot_token_enc: str,
+) -> dict:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO alerts
+                    (user_id, name, saved_query_id, connection_id, sql, condition_type,
+                     threshold, telegram_chat_id, telegram_bot_token_enc)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, user_id, name, saved_query_id, connection_id, sql,
+                          condition_type, threshold, telegram_chat_id, is_active,
+                          last_checked_at, last_fired_at, created_at
+                """,
+                (user_id, name, saved_query_id, connection_id, sql, condition_type,
+                 threshold, telegram_chat_id, telegram_bot_token_enc),
+            )
+            return _str_datetimes(dict(cur.fetchone()))
+
+
+def list_alerts(user_id: str) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, user_id, name, saved_query_id, connection_id, sql,
+                       condition_type, threshold, telegram_chat_id, is_active,
+                       last_checked_at, last_fired_at, created_at
+                FROM alerts WHERE user_id = %s ORDER BY created_at DESC
+                """,
+                (user_id,),
+            )
+            return [_str_datetimes(dict(r)) for r in cur.fetchall()]
+
+
+def get_alert(alert_id: str, user_id: str) -> dict | None:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, user_id, name, saved_query_id, connection_id, sql,
+                       condition_type, threshold, telegram_chat_id, telegram_bot_token_enc,
+                       is_active, last_checked_at, last_fired_at, created_at
+                FROM alerts WHERE id = %s AND user_id = %s
+                """,
+                (alert_id, user_id),
+            )
+            row = cur.fetchone()
+            return _str_datetimes(dict(row)) if row else None
+
+
+def list_all_active_alerts() -> list[dict]:
+    """Used by the scheduler — no user_id filter."""
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, user_id, name, connection_id, sql,
+                       condition_type, threshold, telegram_chat_id, telegram_bot_token_enc,
+                       last_checked_at, last_fired_at
+                FROM alerts WHERE is_active = TRUE
+                """,
+            )
+            return [_str_datetimes(dict(r)) for r in cur.fetchall()]
+
+
+def update_alert(alert_id: str, user_id: str, **fields) -> dict | None:
+    """Update only the provided fields. Recognised: name, condition_type, threshold,
+    is_active, telegram_chat_id, telegram_bot_token_enc."""
+    allowed = {"name", "condition_type", "threshold", "is_active",
+                "telegram_chat_id", "telegram_bot_token_enc"}
+    updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    if not updates:
+        return get_alert(alert_id, user_id)
+    set_clause = ", ".join(f"{k} = %s" for k in updates)
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"""
+                UPDATE alerts SET {set_clause}
+                WHERE id = %s AND user_id = %s
+                RETURNING id, user_id, name, saved_query_id, connection_id, sql,
+                          condition_type, threshold, telegram_chat_id, is_active,
+                          last_checked_at, last_fired_at, created_at
+                """,
+                (*updates.values(), alert_id, user_id),
+            )
+            row = cur.fetchone()
+            return _str_datetimes(dict(row)) if row else None
+
+
+def mark_alert_checked(alert_id: str, fired: bool) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            if fired:
+                cur.execute(
+                    "UPDATE alerts SET last_checked_at = NOW(), last_fired_at = NOW() WHERE id = %s",
+                    (alert_id,),
+                )
+            else:
+                cur.execute(
+                    "UPDATE alerts SET last_checked_at = NOW() WHERE id = %s",
+                    (alert_id,),
+                )
+
+
+def delete_alert(alert_id: str, user_id: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM alerts WHERE id = %s AND user_id = %s", (alert_id, user_id))
+
+
+def _str_datetimes(row: dict) -> dict:
+    """Convert datetime objects to ISO strings for JSON serialisation."""
+    for k, v in row.items():
+        if hasattr(v, "isoformat"):
+            row[k] = v.isoformat()
+    return row
