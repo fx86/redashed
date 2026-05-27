@@ -127,7 +127,10 @@
 - [x] SQL is editable directly
 - [x] No NL input shown in SQL mode
 - [x] Switching from AI mode → SQL mode preserves SQL in pane
-- [ ] Snippet library — collapsible panel listing saved fragments; click inserts at cursor, Cmd+S on selection saves as new snippet
+- [ ] Snippet library — collapsible panel listing saved templates; click opens variable fill-in form, confirmed insert goes to cursor
+- [ ] Snippet template syntax: `{{variable_name}}` placeholders extracted at insert time (client-side regex)
+- [ ] Variable fill-in form: free text by default; schema-aware dropdowns for `{{schema}}`, `{{table}}`, `{{column}}` placeholders using current connection's cached schema
+- [ ] Save snippet: name + SQL template (with or without placeholders); selection shortcut saves highlighted text
 
 ### 4.3 Ask AI Mode
 - [x] Natural language text input shown above SQL editor
@@ -421,7 +424,7 @@ Unlock new user segments or significantly raise the ceiling of existing workflow
 | Query versioning — last 10 versions, history dropdown | §4.6 | Safety net. Backend stores queries; add version column + list endpoint. |
 | Dashboard auto-refresh (30s / 1m / 5m / 30m) | §3.4 | Live dashboard use case. Straightforward once dashboard is solid. |
 | Star / favourite queries + dashboards | §3.1, §5 | Discovery and personalisation. Simple DB flag + sort order change. |
-| Query snippets — save + insert reusable SQL fragments | §4.2 | Analytics engineers reuse the same JOINs, CTEs, and WHERE clauses constantly. Snippet library panel in the editor: save a selection as a named snippet, click to insert at cursor. Stored per-user in local DB. |
+| Query snippets with template variables | §4.2 | Analytics engineers reuse the same JOINs, CTEs, and WHERE clauses across multiple sources. Snippets use `{{variable_name}}` placeholder syntax (dbt-familiar). On insert: extract all `{{...}}` tokens, show a fill-in form. Schema-aware auto-fill: placeholders named `schema`, `table`, or `column` get a dropdown pre-populated from the current connection's introspected schema — no extra API call if schema is cached. Snippets stored as raw template strings; substitution happens client-side at insert time. Portable across connections. |
 | Multiple AI provider keys (one per provider, active selectable) | §8.1 | Power users want OpenAI for some queries, DeepSeek for others. |
 | Share query by email → read-only token link | §5 | Collaboration primitive. Requires user lookup endpoint. |
 
