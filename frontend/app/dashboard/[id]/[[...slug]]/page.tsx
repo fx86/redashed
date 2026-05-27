@@ -458,10 +458,11 @@ export default function DashboardViewPage() {
                             </a>
                           )}
                           <TileFilterDot filters={filters} columns={res?.columns ?? []} />
+                          {/* Always-visible on mobile — touch devices have no hover */}
+                          <a href={`/?query_id=${tile.saved_query_id}`} className="text-xs text-gray-600 hover:text-indigo-400 transition-colors flex-shrink-0">
+                            Edit →
+                          </a>
                           <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <a href={`/?query_id=${tile.saved_query_id}`} title="Open query" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors">
-                              <ExternalLinkIcon />
-                            </a>
                             {res && <button onClick={() => downloadCSV(res.columns, res.rows, slugFilename(tile.question, "csv"))} title="Download CSV" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"><TileDownloadIcon /></button>}
                             {res && ct !== "table" && <button onClick={() => { const el = chartRefs.current.get(tile.id); if (el) downloadChartImage(el, slugFilename(tile.question, "png")); }} title="Download PNG" className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors text-[9px] font-medium">PNG</button>}
                           </div>
@@ -540,15 +541,14 @@ export default function DashboardViewPage() {
                         </a>
                       )}
                       <TileFilterDot filters={filters} columns={res?.columns ?? []} />
+                      <a
+                        href={`/?query_id=${tile.saved_query_id}`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="text-xs text-gray-600 hover:text-indigo-400 transition-colors flex-shrink-0"
+                      >
+                        Edit →
+                      </a>
                       <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <a
-                          href={`/?query_id=${tile.saved_query_id}`}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          title="Open query"
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
-                        >
-                          <ExternalLinkIcon />
-                        </a>
                         {res && (
                           <button
                             onMouseDown={(e) => e.stopPropagation()}
@@ -704,15 +704,6 @@ export default function DashboardViewPage() {
   );
 }
 
-function ExternalLinkIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-      <polyline points="15 3 21 3 21 9" />
-      <line x1="10" y1="14" x2="21" y2="3" />
-    </svg>
-  );
-}
 
 function TileDownloadIcon() {
   return (

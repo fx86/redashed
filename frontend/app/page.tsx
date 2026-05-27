@@ -76,10 +76,12 @@ export default function Home() {
   const [queryMode, setQueryMode] = useState<QueryMode>("ai");
   const [sqlInput, setSqlInput] = useState("");
   const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
+  const [extraViews, setExtraViews] = useState<{ id: string; chartType: ChartType; config: ChartConfig }[]>([]);
 
   const registry = useRegistry();
   const jwt = session?.access_token ?? "";
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const extraChartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const sqlVoice = useVoiceInput((t) =>
     setSqlInput((prev) => (prev.trim() ? `${prev}\n${t}` : t))
@@ -292,6 +294,7 @@ export default function Home() {
   function applyResult(res: QueryResponse, question: string) {
     setResult(res);
     setLastQuestion(question);
+    setExtraViews([]);
     const rows = res.rows.map((row) => {
       const obj: Record<string, unknown> = {};
       res.columns.forEach((col, i) => { obj[col] = row[i]; });
@@ -357,6 +360,42 @@ export default function Home() {
     });
   }
 
+  function toRows(res: QueryResponse) {
+    return res.rows.map((row) => {
+      const obj: Record<string, unknown> = {};
+      res.columns.forEach((col, i) => { obj[col] = row[i]; });
+      return obj;
+    });
+  }
+
+  function addExtraView() {
+    if (!result) return;
+    const usedTypes = new Set([chartType, ...extraViews.map((v) => v.chartType)]);
+    const next = registry.all().find((d) => !usedTypes.has(d.type));
+    if (!next) return;
+    const derived = next.deriveConfig(result.columns, toRows(result));
+    setExtraViews((prev) => [...prev, {
+      id: Math.random().toString(36).slice(2),
+      chartType: next.type,
+      config: { ...derived, type: next.type } as ChartConfig,
+    }]);
+  }
+
+  function removeExtraView(id: string) {
+    setExtraViews((prev) => prev.filter((v) => v.id !== id));
+  }
+
+  function updateExtraViewType(id: string, newType: ChartType) {
+    if (!result) return;
+    setExtraViews((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const def = registry.get(newType);
+      if (!def) return { ...v, chartType: newType, config: { type: newType } as ChartConfig };
+      const derived = def.deriveConfig(result.columns, toRows(result));
+      return { ...v, chartType: newType, config: { ...derived, type: newType } as ChartConfig };
+    }));
+  }
+
   function goToConnections() {
     setStep("connections");
     setResult(null);
@@ -368,6 +407,7 @@ export default function Home() {
     setShowSaveToDashboard(false);
     setIsDirty(false);
     setCurrentQueryId(null);
+    setExtraViews([]);
   }
 
   if (authLoading || initializing) {
@@ -659,6 +699,85 @@ export default function Home() {
                             config={chartConfig}
                           />
                         </div>
+                      )}
+
+                      {/* Extra chart views */}
+                      {extraViews.map((view) => (
+                        <div key={view.id} className="border border-gray-800 rounded-lg overflow-hidden">
+                          <div className="flex items-center gap-2 flex-wrap px-3 pt-2.5 pb-2 border-b border-gray-800/60 bg-gray-900/40">
+                            {(registry.all().map((d) => d.type) as ChartType[]).map((t) => (
+                              <button
+                                key={t}
+                                onClick={() => updateExtraViewType(view.id, t)}
+                                className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                                  view.chartType === t
+                                    ? "bg-indigo-600 text-white"
+                                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                                }`}
+                              >
+                                {t}
+                              </button>
+                            ))}
+                            {view.chartType !== "table" && (
+                              <ChartCustomizer
+                                config={view.config}
+                                columns={result.columns}
+                                onChange={(updates) =>
+                                  setExtraViews((prev) =>
+                                    prev.map((v) =>
+                                      v.id === view.id ? { ...v, config: { ...v.config, ...updates } } : v
+                                    )
+                                  )
+                                }
+                              />
+                            )}
+                            <div className="ml-auto flex items-center gap-1.5">
+                              <button
+                                onClick={() => {
+                                  const el = extraChartRefs.current.get(view.id);
+                                  if (el) downloadChartImage(el, slugFilename(lastQuestion, "png"));
+                                }}
+                                className="text-xs text-gray-600 hover:text-gray-300 transition-colors"
+                                title="Download PNG"
+                              >
+                                PNG
+                              </button>
+                              <button
+                                onClick={() => removeExtraView(view.id)}
+                                className="text-gray-700 hover:text-red-400 transition-colors"
+                                aria-label="Remove view"
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          <div
+                            ref={(el) => {
+                              if (el) extraChartRefs.current.set(view.id, el);
+                              else extraChartRefs.current.delete(view.id);
+                            }}
+                            className="h-72"
+                          >
+                            <ChartView
+                              chartType={view.chartType}
+                              columns={result.columns}
+                              rows={result.rows}
+                              config={view.config}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Add chart view — only if there are unused chart types */}
+                      {registry.all().some((d) => d.type !== chartType && !extraViews.find((v) => v.chartType === d.type)) && (
+                        <button
+                          onClick={addExtraView}
+                          className="w-full text-xs text-gray-600 hover:text-gray-400 border border-dashed border-gray-800 hover:border-gray-700 rounded-lg py-2 transition-colors"
+                        >
+                          + Add chart view
+                        </button>
                       )}
 
                       <ResultsTable result={result} />

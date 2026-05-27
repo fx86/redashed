@@ -414,10 +414,10 @@ Features that complete an already-shipped surface and unlock the analytics engin
 | ~~Schema annotation UI — editable table + column descriptions~~ | §6.3 | ✅ Shipped — `/connections/[id]/schema`, progress bar, click-to-edit, re-introspect |
 | ~~Manual re-introspect button on connections page~~ | §6.2 | ✅ Shipped — Re-introspect button on the annotation page |
 | ~~Dashboard filter bar~~ | §3.6 | ✅ Shipped — client-side filters, URL-sync, column type inference |
-| Query chaining — multiple chart views from one query result | §4.7 | High leverage: one query → multiple dashboard tiles. Build after filter bar. |
+| ~~Query chaining — multiple chart views from one query result~~ | §4.7 | ✅ Shipped — "+ Add chart view" adds independent views from same result; each has own type selector + ChartCustomizer + PNG download. Resets on new query. Primary view still used for Save/Add-to-dashboard. |
 | Pre-run scan size estimate | §4.4 | Cost/safety signal before hitting the warehouse. Snowflake + BQ support this natively. |
 | SQL mode: global search across title + SQL content | §5 | Current search is title-only; engineers need to find queries by SQL pattern. |
-| Dashboard tile: "Edit query" context menu item | §3.3 | Closes the loop from dashboard → editor. Currently no path back. |
+| ~~Dashboard tile: "Edit query" link~~ | §3.3 | ✅ Shipped — always-visible "Edit →" text link in every tile header (mobile + desktop). |
 
 ### P2 — Growth features (expand capability)
 
