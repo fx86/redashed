@@ -104,6 +104,7 @@ export async function listUserConnections(jwt: string): Promise<SavedConnection[
 export async function getConnectionSchema(jwt: string, connectionId: string): Promise<TableInfo[]> {
   const res = await fetch(`${BASE}/user-connections/${connectionId}/schema`, {
     headers: authHeaders(jwt),
+    cache: "no-store",
   });
   const data = await handleResponse<{ tables: TableInfo[] }>(res);
   return data.tables;

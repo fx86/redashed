@@ -292,6 +292,25 @@ def insert_tile(
     tile_layout = layout or {"x": 0, "y": 0, "w": 6, "h": 4}
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Place the new tile below all existing tiles so it never lands on
+            # top of one and forces the grid to reflow the rest. Width/height come
+            # from the requested layout; x/y are computed from current occupancy.
+            cur.execute(
+                "SELECT layout FROM dashboard_tiles WHERE dashboard_id = %s",
+                (dashboard_id,),
+            )
+            next_y = 0
+            for r in cur.fetchall():
+                existing = r["layout"]
+                if isinstance(existing, str):
+                    existing = json.loads(existing)
+                next_y = max(next_y, int(existing.get("y", 0)) + int(existing.get("h", 4)))
+            tile_layout = {
+                "x": 0,
+                "y": next_y,
+                "w": int(tile_layout.get("w", 6)),
+                "h": int(tile_layout.get("h", 4)),
+            }
             cur.execute(
                 """
                 INSERT INTO dashboard_tiles (dashboard_id, saved_query_id, chart_type, chart_config, position, layout)
@@ -522,6 +541,18 @@ def get_or_create_flatfile_connection(user_id: str, schema_name: str) -> str:
                 (user_id, json.dumps({"uploads_schema": schema_name})),
             )
             return str(cur.fetchone()["id"])
+
+
+def get_flatfile_connection_id(user_id: str) -> str | None:
+    """Read-only lookup of the user's flat_file connection id (no creation)."""
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id FROM user_connections WHERE user_id = %s AND db_type = 'flat_file' LIMIT 1",
+                (user_id,),
+            )
+            row = cur.fetchone()
+            return str(row["id"]) if row else None
 
 
 def insert_upload_record(

@@ -1,7 +1,16 @@
 from __future__ import annotations
 import os
+import re
 from openai import OpenAI
 from app.models.schemas import TableInfo
+
+
+def _ident(name: str) -> str:
+    """Render a table/column name as a safe SQL identifier, quoting only when
+    required (e.g. names that start with a digit or contain special chars)."""
+    if re.fullmatch(r"[a-z_][a-z0-9_]*", name):
+        return name
+    return '"' + name.replace('"', '""') + '"'
 
 
 _client: OpenAI | None = None
@@ -46,7 +55,11 @@ def test_key(provider: str, model: str, api_key: str) -> None:
         raise ValueError(str(e)[:200])
 
 
-def _schema_to_text(tables: list[TableInfo], annotations: list[dict] | None = None) -> str:
+def _schema_to_text(
+    tables: list[TableInfo],
+    annotations: list[dict] | None = None,
+    qualify: bool = True,
+) -> str:
     ann_map: dict[tuple, str] = {}
     if annotations:
         for a in annotations:
@@ -62,7 +75,11 @@ def _schema_to_text(tables: list[TableInfo], annotations: list[dict] | None = No
             + (f" -- {ann_map[(table.schema, table.name, c.name)]}" if (table.schema, table.name, c.name) in ann_map else "")
             for c in table.columns
         )
-        line = f"{table.schema}.{table.name}({cols})"
+        # qualify=False renders the bare (correctly-quoted) table name — used for
+        # uploads, where the executor sets search_path to the user's schema and
+        # forcing the model to reproduce an opaque schema name is error-prone.
+        rel = f"{table.schema}.{table.name}" if qualify else _ident(table.name)
+        line = f"{rel}({cols})"
         if table_desc:
             line += f"  -- {table_desc}"
         lines.append(line)
@@ -74,8 +91,15 @@ def generate_sql(
     tables: list[TableInfo],
     annotations: list[dict] | None = None,
     user_ai_key: dict | None = None,
+    qualify_tables: bool = True,
 ) -> str:
-    schema_text = _schema_to_text(tables, annotations)
+    schema_text = _schema_to_text(tables, annotations, qualify=qualify_tables)
+    naming_rule = (
+        "- Use fully qualified table names (schema.table)\n"
+        if qualify_tables
+        else "- Use the table names exactly as written in the schema (bare, already "
+             "quoted where needed); do NOT add a schema prefix\n"
+    )
 
     if user_ai_key:
         client = _build_client(user_ai_key["provider"], user_ai_key["api_key"])
@@ -96,7 +120,7 @@ def generate_sql(
                     "Rules:\n"
                     "- Output ONLY the SQL query, no explanation, no markdown fences\n"
                     "- Use only SELECT statements — never INSERT, UPDATE, DELETE, DROP, or DDL\n"
-                    "- Use fully qualified table names (schema.table)\n"
+                    + naming_rule +
                     "- Limit results to 500 rows unless the user specifies otherwise\n"
                     "- If the question cannot be answered with the given schema, respond with: "
                     "-- Cannot answer: <brief reason>"

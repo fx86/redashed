@@ -15,6 +15,8 @@ import {
   getSavedQuery,
   listAnnotations,
   upsertAnnotation,
+  listUploads,
+  deleteUpload,
 } from "@/lib/api";
 import type { SavedConnection, TableInfo, QueryResponse, Annotation, Upload } from "@/lib/api";
 import { selectChartType, useRegistry } from "@bi-tool/charts";
@@ -32,7 +34,8 @@ import SaveToDashboard from "@/components/SaveToDashboard";
 import ChartCustomizer from "@/components/ChartCustomizer";
 
 type AppStep = "connections" | "query";
-type QueryMode = "ai" | "sql";
+type QueryMode = "ai" | "sql" | "chain";
+type JoinType = "INNER" | "LEFT" | "RIGHT";
 
 const DRAFT_KEY = "bi-tool-sql-draft";
 
@@ -64,6 +67,7 @@ export default function Home() {
   const [lastQuestion, setLastQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [uploads, setUploads] = useState<Upload[]>([]);
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +81,17 @@ export default function Home() {
   const [sqlInput, setSqlInput] = useState("");
   const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
   const [extraViews, setExtraViews] = useState<{ id: string; chartType: ChartType; config: ChartConfig }[]>([]);
+
+  // Chain mode state
+  const [sqlA, setSqlA] = useState("");
+  const [sqlB, setSqlB] = useState("");
+  const [resultA, setResultA] = useState<QueryResponse | null>(null);
+  const [resultB, setResultB] = useState<QueryResponse | null>(null);
+  const [loadingA, setLoadingA] = useState(false);
+  const [loadingB, setLoadingB] = useState(false);
+  const [joinKey, setJoinKey] = useState("");
+  const [joinType, setJoinType] = useState<JoinType>("INNER");
+  const [chainError, setChainError] = useState<string | null>(null);
 
   const registry = useRegistry();
   const jwt = session?.access_token ?? "";
@@ -120,11 +135,14 @@ export default function Home() {
     const queryId = params?.get("query_id") ?? null;
     const connectionId = params?.get("connection_id") ?? null;
 
-    listUserConnections(jwt)
-      .then(async (allConns) => {
+    Promise.all([listUserConnections(jwt), listUploads(jwt).catch(() => [])])
+      .then(async ([allConns, existingUploads]) => {
+        setUploads(existingUploads);
+        // flat_file connections are excluded from the picker cards but must
+        // remain resolvable for deep links / saved queries against uploads.
         const conns = allConns.filter((c) => c.db_type !== "flat_file");
         setConnections(conns);
-        if (conns.length === 0) {
+        if (conns.length === 0 && !queryId && !connectionId) {
           const done = typeof window !== "undefined" && localStorage.getItem("onboarding_done");
           if (!done) { router.replace("/onboarding"); return; }
           return;
@@ -133,7 +151,7 @@ export default function Home() {
         if (queryId) {
           try {
             const q = await getSavedQuery(jwt, queryId);
-            const conn = conns.find((c) => c.id === q.connection_id) ?? conns[0];
+            const conn = allConns.find((c) => c.id === q.connection_id) ?? conns[0];
             const [tables, anns] = await Promise.all([
               getConnectionSchema(jwt, conn.id),
               listAnnotations(jwt, conn.id).catch(() => []),
@@ -162,7 +180,7 @@ export default function Home() {
             await connectFirst(conns, jwt);
           }
         } else if (connectionId) {
-          const conn = conns.find((c) => c.id === connectionId);
+          const conn = allConns.find((c) => c.id === connectionId);
           window.history.replaceState({}, "", "/");
           if (conn) {
             try {
@@ -179,7 +197,13 @@ export default function Home() {
             await connectFirst(conns, jwt);
           }
         } else {
-          await connectFirst(conns, jwt);
+          // Only auto-connect when there's exactly one connection — no ambiguity.
+          // With multiple connections, stay on the connections screen so the user
+          // can pick which dataset they want to query.
+          if (conns.length === 1) {
+            await connectFirst(conns, jwt);
+          }
+          // else: step stays "connections", user selects manually
         }
       })
       .catch(() => {})
@@ -279,11 +303,23 @@ export default function Home() {
     setError(null);
     setResult(null);
     setSaved(false);
-    setCurrentQueryId(null);
+    // Do NOT clear currentQueryId here — if the user loaded an existing saved query
+    // and edits + re-runs it, saving should update that record (not create a new one).
+    // currentQueryId is only cleared when starting a genuinely new question (handleQuery).
     setLastQuestion(sqlInput);
+    // Capture current chart config before applyResult overwrites it with auto-selection.
+    // On a re-run (result already exists), we restore it so the user's chart type choice
+    // (e.g. line chart) survives editing and re-running the SQL.
+    const isRerun = result !== null;
+    const prevChartType = chartType;
+    const prevChartConfig = chartConfig;
     try {
       const res = await runSql(jwt, activeConnection.id, sqlInput);
       applyResult(res, sqlInput);
+      if (isRerun) {
+        setChartType(prevChartType);
+        setChartConfig(prevChartConfig);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Query failed");
     } finally {
@@ -333,6 +369,7 @@ export default function Home() {
   async function handleUploadSuccess(upload: Upload) {
     if (!upload.connection_id) return;
     setShowUploadPanel(false);
+    setUploads((prev) => [upload, ...prev.filter((u) => u.id !== upload.id)]);
     const flatFileConn: SavedConnection = {
       id: upload.connection_id,
       name: "Uploaded Files",
@@ -344,6 +381,27 @@ export default function Home() {
       created_at: new Date().toISOString(),
     };
     await handleSelectConnection(flatFileConn);
+  }
+
+  async function handleDeleteUpload(uploadId: string, filename: string) {
+    if (!confirm(`Delete "${filename}"? This cannot be undone.`)) return;
+    await deleteUpload(jwt, uploadId);
+    setUploads((prev) => prev.filter((u) => u.id !== uploadId));
+  }
+
+  function handleOpenUpload(upload: Upload) {
+    if (!upload.connection_id) return;
+    const flatFileConn: SavedConnection = {
+      id: upload.connection_id,
+      name: "Uploaded Files",
+      db_type: "flat_file",
+      host: "",
+      port: 0,
+      database: "",
+      db_user: "",
+      created_at: new Date().toISOString(),
+    };
+    handleSelectConnection(flatFileConn);
   }
 
   async function handleAnnotate(body: { table_schema: string; table_name: string; column_name?: string | null; description: string }) {
@@ -358,6 +416,84 @@ export default function Home() {
       );
       return [...filtered, ann];
     });
+  }
+
+  async function handleRunChainA() {
+    if (!activeConnection || !sqlA.trim()) return;
+    setLoadingA(true);
+    setChainError(null);
+    try {
+      const res = await runSql(jwt, activeConnection.id, sqlA);
+      setResultA(res);
+      // Auto-suggest join key from common columns
+      if (resultB) {
+        const common = res.columns.filter((c) => resultB.columns.includes(c));
+        if (common.length > 0 && !joinKey) setJoinKey(common[0]);
+      }
+    } catch (e) {
+      setChainError(`Query A: ${e instanceof Error ? e.message : "failed"}`);
+    } finally {
+      setLoadingA(false);
+    }
+  }
+
+  async function handleRunChainB() {
+    if (!activeConnection || !sqlB.trim()) return;
+    setLoadingB(true);
+    setChainError(null);
+    try {
+      const res = await runSql(jwt, activeConnection.id, sqlB);
+      setResultB(res);
+      // Auto-suggest join key from common columns
+      if (resultA) {
+        const common = resultA.columns.filter((c) => res.columns.includes(c));
+        if (common.length > 0 && !joinKey) setJoinKey(common[0]);
+      }
+    } catch (e) {
+      setChainError(`Query B: ${e instanceof Error ? e.message : "failed"}`);
+    } finally {
+      setLoadingB(false);
+    }
+  }
+
+  function buildMergeQuery() {
+    if (!sqlA.trim()) { setChainError("Query A is empty."); return; }
+    if (!sqlB.trim()) { setChainError("Query B is empty."); return; }
+    if (!joinKey.trim()) { setChainError("Join key is required."); return; }
+    setChainError(null);
+
+    // Build SELECT clause — if both ran, alias conflicting non-key columns
+    let selectClause = "*";
+    if (resultA && resultB) {
+      const conflicts = resultB.columns.filter(
+        (c) => c !== joinKey && resultA.columns.includes(c)
+      );
+      if (conflicts.length > 0) {
+        const bCols = resultB.columns
+          .filter((c) => c !== joinKey)
+          .map((c) => conflicts.includes(c) ? `query_b.${c} AS ${c}_b` : `query_b.${c}`)
+          .join(", ");
+        selectClause = `query_a.*, ${bCols}`;
+      }
+    }
+
+    const indent = (sql: string) =>
+      sql.trim().split("\n").map((l) => `  ${l}`).join("\n");
+
+    const generated = [
+      `WITH query_a AS (`,
+      indent(sqlA),
+      `),`,
+      `query_b AS (`,
+      indent(sqlB),
+      `)`,
+      `SELECT ${selectClause}`,
+      `FROM query_a`,
+      `${joinType} JOIN query_b ON query_a.${joinKey} = query_b.${joinKey}`,
+    ].join("\n");
+
+    setSqlInput(generated);
+    setQueryMode("sql");
   }
 
   function toRows(res: QueryResponse) {
@@ -408,6 +544,8 @@ export default function Home() {
     setIsDirty(false);
     setCurrentQueryId(null);
     setExtraViews([]);
+    setSqlA(""); setSqlB(""); setResultA(null); setResultB(null);
+    setJoinKey(""); setJoinType("INNER"); setChainError(null);
   }
 
   if (authLoading || initializing) {
@@ -449,14 +587,42 @@ export default function Home() {
 
           {step === "connections" && (
             <div className="space-y-4">
-              {/* Upload entry point — no connection needed */}
+              {/* Uploaded files */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm font-semibold text-gray-200">Upload a file</h2>
+                  <h2 className="text-sm font-semibold text-gray-200">Uploaded files</h2>
                   {showUploadPanel && (
                     <button onClick={() => setShowUploadPanel(false)} className="text-xs text-gray-600 hover:text-gray-400">✕</button>
                   )}
                 </div>
+
+                {/* Existing uploads */}
+                {uploads.length > 0 && !showUploadPanel && (
+                  <div className="space-y-1.5 mb-2">
+                    {uploads.map((u) => (
+                      <div
+                        key={u.id}
+                        className="group flex items-center justify-between bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-lg px-3 py-2.5 cursor-pointer transition-colors"
+                        onClick={() => handleOpenUpload(u)}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-200 truncate">{u.original_filename}</p>
+                          <p className="text-xs text-gray-500">{u.row_count.toLocaleString()} rows · {u.col_count} cols</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                          <span className="text-xs text-gray-600 hidden group-hover:inline">Query →</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteUpload(u.id, u.original_filename); }}
+                            className="text-gray-700 hover:text-red-400 transition-colors px-1 text-xs"
+                            title="Delete"
+                          >✕</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload new file */}
                 {showUploadPanel ? (
                   <FileUpload jwt={jwt} onUpload={handleUploadSuccess} />
                 ) : (
@@ -569,32 +735,30 @@ export default function Home() {
                   tables={schema}
                   annotations={annotations}
                   onAnnotate={handleAnnotate}
+                  onRefresh={async () => {
+                    if (!activeConnection) return;
+                    const tables = await getConnectionSchema(jwt, activeConnection.id);
+                    setSchema(tables);
+                  }}
                 />
                 <div className="space-y-3">
 
                   {/* Mode toggle */}
                   <div className="flex items-center gap-2">
                     <div className="flex bg-gray-800 rounded-lg p-0.5 border border-gray-700 gap-0.5">
-                      <button
-                        onClick={() => setQueryMode("ai")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          queryMode === "ai"
-                            ? "bg-indigo-600 text-white"
-                            : "text-gray-400 hover:text-gray-200"
-                        }`}
-                      >
-                        Ask AI
-                      </button>
-                      <button
-                        onClick={() => setQueryMode("sql")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          queryMode === "sql"
-                            ? "bg-indigo-600 text-white"
-                            : "text-gray-400 hover:text-gray-200"
-                        }`}
-                      >
-                        Write SQL
-                      </button>
+                      {(["ai", "sql", "chain"] as QueryMode[]).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setQueryMode(m)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            queryMode === m
+                              ? "bg-indigo-600 text-white"
+                              : "text-gray-400 hover:text-gray-200"
+                          }`}
+                        >
+                          {m === "ai" ? "Ask AI" : m === "sql" ? "Write SQL" : "Chain"}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -642,6 +806,126 @@ export default function Home() {
                         {loading ? "Running…" : "Run query"}
                         <span className="ml-2 text-[10px] text-indigo-300 font-normal">⌘↵</span>
                       </button>
+                    </div>
+                  )}
+
+                  {/* Chain mode */}
+                  {queryMode === "chain" && (
+                    <div className="space-y-3">
+                      <p className="text-xs text-gray-500">Write two queries on <span className="text-gray-300">{activeConnection.name}</span>, pick a join key, and generate a combined SQL query.</p>
+
+                      {chainError && (
+                        <p className="text-xs text-red-400 bg-red-950/40 border border-red-800 rounded px-3 py-2">{chainError}</p>
+                      )}
+
+                      {/* Query A */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Query A</span>
+                          {resultA && <span className="text-[10px] text-emerald-500">{resultA.row_count.toLocaleString()} rows · {resultA.columns.join(", ")}</span>}
+                        </div>
+                        <div className="flex gap-2">
+                          <textarea
+                            value={sqlA}
+                            onChange={(e) => { setSqlA(e.target.value); setResultA(null); }}
+                            placeholder={"SELECT user_id, revenue\nFROM orders\nLIMIT 1000"}
+                            rows={4}
+                            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-xs font-mono text-violet-300 resize-none focus:outline-none focus:border-indigo-500 placeholder:text-gray-700"
+                            spellCheck={false}
+                          />
+                          <button
+                            onClick={handleRunChainA}
+                            disabled={loadingA || !sqlA.trim()}
+                            className="self-start px-3 py-2 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 disabled:opacity-40 transition-colors flex-shrink-0"
+                          >
+                            {loadingA ? "…" : "Run A"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Query B */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Query B</span>
+                          {resultB && <span className="text-[10px] text-emerald-500">{resultB.row_count.toLocaleString()} rows · {resultB.columns.join(", ")}</span>}
+                        </div>
+                        <div className="flex gap-2">
+                          <textarea
+                            value={sqlB}
+                            onChange={(e) => { setSqlB(e.target.value); setResultB(null); }}
+                            placeholder={"SELECT user_id, country\nFROM users"}
+                            rows={4}
+                            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-xs font-mono text-violet-300 resize-none focus:outline-none focus:border-indigo-500 placeholder:text-gray-700"
+                            spellCheck={false}
+                          />
+                          <button
+                            onClick={handleRunChainB}
+                            disabled={loadingB || !sqlB.trim()}
+                            className="self-start px-3 py-2 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 disabled:opacity-40 transition-colors flex-shrink-0"
+                          >
+                            {loadingB ? "…" : "Run B"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Join config */}
+                      <div className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-3 space-y-3">
+                        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Join config</p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {/* Key picker */}
+                          <div className="space-y-1 flex-1 min-w-[140px]">
+                            <label className="text-[10px] text-gray-600">Join key</label>
+                            {resultA && resultB && resultA.columns.filter((c) => resultB.columns.includes(c)).length > 0 ? (
+                              <select
+                                value={joinKey}
+                                onChange={(e) => setJoinKey(e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-indigo-500"
+                              >
+                                <option value="">Pick a key…</option>
+                                {resultA.columns.filter((c) => resultB.columns.includes(c)).map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                value={joinKey}
+                                onChange={(e) => setJoinKey(e.target.value)}
+                                placeholder={resultA && resultB ? "No shared columns — enter manually" : "e.g. user_id"}
+                                className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 placeholder:text-gray-600 outline-none focus:border-indigo-500"
+                              />
+                            )}
+                          </div>
+
+                          {/* Join type */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-gray-600">Join type</label>
+                            <div className="flex gap-1">
+                              {(["INNER", "LEFT", "RIGHT"] as JoinType[]).map((t) => (
+                                <button
+                                  key={t}
+                                  onClick={() => setJoinType(t)}
+                                  className={`px-2.5 py-1.5 text-xs rounded transition-colors ${
+                                    joinType === t
+                                      ? "bg-indigo-600 text-white"
+                                      : "bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700"
+                                  }`}
+                                  title={t === "LEFT" ? "Keep all rows from A" : t === "RIGHT" ? "Keep all rows from B" : "Keep only matching rows"}
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={buildMergeQuery}
+                          disabled={!sqlA.trim() || !sqlB.trim() || !joinKey.trim()}
+                          className="w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs font-medium transition-colors"
+                        >
+                          Build merge query →
+                        </button>
+                      </div>
                     </div>
                   )}
 

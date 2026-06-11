@@ -153,7 +153,9 @@ def query_connection(connection_id: str, body: SavedConnectionQueryRequest, user
                 for t in raw
             ]
             annotations = local_db_service.list_annotations(user["user_id"], connection_id)
-            sql = ai_service.generate_sql(body.question, tables, annotations, user_ai_key=user_ai_key)
+            sql = ai_service.generate_sql(
+                body.question, tables, annotations, user_ai_key=user_ai_key, qualify_tables=False
+            )
             if sql.startswith("-- Cannot answer"):
                 raise HTTPException(status_code=422, detail=sql)
             columns, result_rows, elapsed_ms = upload_service.execute_upload_sql(user["user_id"], sql)

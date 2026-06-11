@@ -152,7 +152,7 @@ export default function FileUpload({ jwt, onUpload }: Props) {
         >
           <input ref={inputRef} type="file" accept=".csv,.tsv,.txt,.dat" className="hidden" onChange={onInputChange} />
           <p className="text-sm text-gray-400">Drop a flat file here or <span className="text-indigo-400">click to select</span></p>
-          <p className="text-xs text-gray-600 mt-1">CSV, TSV, pipe-delimited, or any character-separated file · max 50 MB</p>
+          <p className="text-xs text-gray-600 mt-1">CSV, TSV, pipe-delimited, or any character-separated file · max 150 MB</p>
         </div>
       ) : (
         <div className="space-y-3">
