@@ -19,6 +19,7 @@ nodejs-memory-bomb.jpg
 *.png
 *.csv
 !docs/screenshots/*.png
+!frontend/public/screenshots/*.png
 .claude/
 .playwright-mcp/
 

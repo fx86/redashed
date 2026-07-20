@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import AuthForm from "@/components/AuthForm";
+import LandingPage from "@/components/LandingPage";
 import {
   listUserConnections,
   createUserConnection,
@@ -557,19 +557,7 @@ export default function Home() {
   }
 
   if (!user) {
-    return (
-      <main
-        className="min-h-screen flex items-center justify-center px-4"
-        style={{
-          backgroundColor: "#030712",
-          backgroundImage:
-            "linear-gradient(rgba(99,102,241,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.07) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      >
-        <AuthForm />
-      </main>
-    );
+    return <LandingPage />;
   }
 
   return (

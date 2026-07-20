@@ -5,9 +5,9 @@ import { useAuth } from "@/lib/auth";
 
 type Mode = "sign_in" | "sign_up" | "forgot_password";
 
-export default function AuthForm() {
+export default function AuthForm({ initialMode = "sign_in" }: { initialMode?: Mode }) {
   const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
-  const [mode, setMode] = useState<Mode>("sign_in");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
