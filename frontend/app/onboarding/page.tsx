@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { createUserConnection, importDataGov, searchDataGov } from "@/lib/api";
-import type { DataGovDataset } from "@/lib/api";
+import { createUserConnection } from "@/lib/api";
+import type { SavedConnection } from "@/lib/api";
 import SavedConnectionForm from "@/components/SavedConnectionForm";
 
-type Source = "warehouse" | "datagov";
 type Step = "pick" | "adding" | "done";
 
 export default function OnboardingPage() {
@@ -17,16 +16,9 @@ export default function OnboardingPage() {
 
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<Step>("pick");
-  const [source, setSource] = useState<Source>("warehouse");
   const [connName, setConnName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-
-  // data.gov state
-  const [dgQuery, setDgQuery] = useState("");
-  const [dgResults, setDgResults] = useState<DataGovDataset[]>([]);
-  const [dgSearching, setDgSearching] = useState(false);
-  const [importingId, setImportingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -61,35 +53,9 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleDgSearch(q: string) {
-    setDgQuery(q);
-    if (!q.trim()) { setDgResults([]); return; }
-    setDgSearching(true);
-    try {
-      const results = await searchDataGov(jwt, q);
-      setDgResults(results);
-    } catch { /* ignore search errors */ }
-    finally { setDgSearching(false); }
-  }
-
-  async function handleDgImport(dataset: DataGovDataset) {
-    const res = dataset.resources[0];
-    if (!res) return;
-    setImportingId(dataset.id);
-    setError(null);
-    try {
-      const conn = await importDataGov(jwt, {
-        dataset_id: dataset.id,
-        dataset_title: dataset.title,
-        resource_url: res.url,
-      });
-      setConnName(conn.name);
-      setStep("done");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Import failed");
-    } finally {
-      setImportingId(null);
-    }
+  function handleDataGovImport(conn: SavedConnection) {
+    setConnName(conn.name);
+    setStep("done");
   }
 
   if (!mounted || authLoading) {
@@ -145,92 +111,21 @@ export default function OnboardingPage() {
         {/* Step: pick + add */}
         {step !== "done" && (
           <div className="space-y-4">
-            {/* Source toggle */}
-            <div className="flex bg-gray-900 rounded-lg p-0.5 border border-gray-800 w-fit gap-0.5">
-              <button
-                onClick={() => { setSource("warehouse"); setError(null); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  source === "warehouse" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200"
-                }`}
-              >
-                Warehouse
-              </button>
-              <button
-                onClick={() => { setSource("datagov"); setError(null); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  source === "datagov" ? "bg-emerald-700 text-white" : "text-gray-400 hover:text-gray-200"
-                }`}
-              >
-                data.gov
-              </button>
-            </div>
-
             {error && (
               <p className="text-sm text-red-400 bg-red-950/40 border border-red-800 rounded p-3">{error}</p>
             )}
 
-            {source === "warehouse" && (
-              <SavedConnectionForm
-                onSave={handleAddWarehouse}
-                onCancel={skip}
-                loading={adding}
-              />
-            )}
+            <SavedConnectionForm
+              onSave={handleAddWarehouse}
+              onCancel={skip}
+              loading={adding}
+              jwt={jwt}
+              onDataGovImport={handleDataGovImport}
+            />
 
-            {source === "datagov" && (
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-100 mb-1">Search data.gov</h3>
-                  <p className="text-xs text-gray-500 mb-3">Browse 300,000+ US government datasets. No account needed.</p>
-                  <input
-                    type="text"
-                    value={dgQuery}
-                    onChange={(e) => handleDgSearch(e.target.value)}
-                    placeholder="Search (e.g. unemployment, climate, census…)"
-                    className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:border-emerald-600 transition-colors"
-                    autoFocus
-                  />
-                </div>
-
-                {dgSearching && <p className="text-xs text-gray-500">Searching…</p>}
-
-                {dgResults.length > 0 && (
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                    {dgResults.map((dataset) => (
-                      <div key={dataset.id} className="bg-gray-800/60 border border-gray-700 rounded-lg p-3 space-y-2">
-                        <div>
-                          <p className="text-sm font-medium text-gray-100 leading-tight">{dataset.title}</p>
-                          {dataset.organization && (
-                            <p className="text-[11px] text-gray-500 mt-0.5">{dataset.organization}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleDgImport(dataset)}
-                          disabled={importingId !== null}
-                          className="text-xs px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 transition-colors"
-                        >
-                          {importingId === dataset.id ? "Importing…" : "Import dataset"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {!dgSearching && dgQuery && dgResults.length === 0 && (
-                  <p className="text-xs text-gray-500">No CSV datasets found for "{dgQuery}".</p>
-                )}
-
-                <button onClick={skip} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-                  Skip for now
-                </button>
-              </div>
-            )}
-
-            {source === "warehouse" && (
-              <button onClick={skip} className="text-xs text-gray-600 hover:text-gray-400 transition-colors block">
-                Skip for now
-              </button>
-            )}
+            <button onClick={skip} className="text-xs text-gray-600 hover:text-gray-400 transition-colors block">
+              Skip for now
+            </button>
           </div>
         )}
 
